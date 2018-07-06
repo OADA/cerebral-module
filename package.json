@@ -1,0 +1,11 @@
+{
+  "name": "@oada/cerebral-module",
+  "version": "0.8.0",
+  "description": "oada cerebral module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "Apache-2.0"
+}
