@@ -1,6 +1,6 @@
 {
   "name": "@oada/cerebral-module",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "oada cerebral module",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "build": "babel src --out-dir build --presets=env",
     "prepublish": "npm run build",
     "build-watch": "babel --watch src --out-dir build --presets=env",
-    "dev": "cpx --watch --verbose '../cerebral-privider/**' './node_modules/@oada/oada-provider/'"
+    "dev": "cpx --watch --verbose '../cerebral-provider/**' './node_modules/@oada/oada-provider/'"
   },
   "author": "oada",
   "license": "Apache-2.0",

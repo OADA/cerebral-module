@@ -55,15 +55,17 @@ export const get = sequence('oada.get', [
 	({oada, state, props}) => {
 
 		const apiPromises = [];
+		const htIndex = {};
     requestsRequired = props.requests.length;
 
-    for (let i = requestsRequired; i > 0; i--) {
+    for(let i = 0; i < arrayLength; i++){
         apiPromises.push(oada.get({
 					url: state.get('oada.domain') + ((props.requests[i].path[0] === '/') ?
 					     '':'/') + props.requests[i].path,
 					token: state.get('oada.token')
 				}));
-    }
+				htIndex[props.requests[i].path] = i;
+    }//for
 
     let results = [];
     Promise.all(apiPromises)
@@ -72,15 +74,17 @@ export const get = sequence('oada.get', [
 	        responses.map(response => {
 	            processedResponses.push(response);
 							results.push({
+								_id: response.data._id,
 								data: response.data,
 								//cerebralPath: props.path.split('/').filter(n=>n&&true).join('.')
+								cerebralPath: props.requests[htIndex[response.data.localtion]]
+																.path.split('/').filter(n=>n&&true).join('.')
 							})
-	        }
+	        });
 
 	        return results;
 	    });
-
-		)
+		}
 	//set(state`oada.${props`cerebralPath`}`, props`data`),
 ])
 
@@ -102,20 +106,44 @@ export const updateState = sequence('oada.updateState', [
 	},
 ])
 
+// export const updateStates = sequence('oada.updateStates', [
+//
+// 	props.requests.forEach(function(request) {
+//     console.log(request);
+// 		when(request, (value) => /^\/?resources/.test(value)), {
+// 			true: sequence('postedToResources', [
+// 				when(props`putPath`), {
+// 					true: [
+// 						//A reverse index should be added for POSTs/PUTs to /resources
+// 						set(state`oada.resources.${props`id`}`, props`putPath`),
+// 					],
+// 					false: [],
+// 				},
+// 			]),
+// 			// Set path for a GET to propagate PUT data into state tree
+// 			false: sequence('didntPostToResources', [
+// 				get,
+// 			]),
+// 		},
+// 	});
+// ])
+
 export const put = sequence('oada.put', [
 	({oada, state, props}) => {
 		const apiPromises = [];
+		const htIndex = {};
 		requestsRequired = props.requests.length;
 
-		for (let i = requestsRequired; i > 0; i--) {
+		for (let i = 0; i < requestsRequired; i++) {
         apiPromises.push(oada.put({
-					url: state.get('oada.domain')+((props.requests[i].path[0] === '/') ?
-																				'':'/')+props.requests[i].path,
+					url: state.get('oada.domain') + ((props.requests[i].path[0] === '/') ?
+																				'':'/') + props.requests[i].path,
 					contentType: props.contentType,
 					data: props.requests[i].data,
 					token: state.get('oada.token'),
 				}));
-    }
+				htIndex[props.requests[i].path] = i;
+    }//for
 
     let results = [];
     Promise.all(apiPromises)
@@ -132,8 +160,9 @@ export const put = sequence('oada.put', [
 	        })
 
 	        return results;
-	    });
-			updateState,
+	    })
+		}
+		//updateState
 ])
 
 // Somewhat abandoned.  PUT is preferred.  Create the uuid and send it along.
@@ -398,7 +427,7 @@ export const createResourceAndLink = sequence('oada.createResourceAndLink', [
 	// create resource
 	({state, props}) => ({
 		putPath: props.path,
-		path: props.uuid ? '/resources/'+ props.uuid : '/resources',
+		path: props.uuid ? '/resources/' + props.uuid : '/resources',
 	}),
 	when(props`uuid`), {
 		true: [put],
@@ -422,4 +451,4 @@ export const createResourceAndLink = sequence('oada.createResourceAndLink', [
 	put,
 ])
 
-])
+// ])
