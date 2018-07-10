@@ -61,7 +61,7 @@ export const get = sequence('oada.get', [
     for(let i = 0; i < arrayLength; i++){
         apiPromises.push(oada.get({
 					url: state.get('oada.domain') + ((props.requests[i].path[0] === '/') ?
-					     '':'/') + props.requests[i].path,
+					                                    '':'/') + props.requests[i].path,
 					token: state.get('oada.token')
 				}));
 				htIndex[props.requests[i].path] = i;
@@ -168,20 +168,38 @@ export const put = sequence('oada.put', [
 // Somewhat abandoned.  PUT is preferred.  Create the uuid and send it along.
 export const post = sequence('oada.post', [
 	({props, state, oada}) => {
-		return oada.post({
-			url: state.get('oada.domain')+((props.path[0] === '/') ? '':'/')+props.path,
-			token: state.get('oada.token'),
-			contentType: props.contentType,
-			data: props.data,
-		}).then((response) => {
-			return {
-				// return the resource
-				_rev: response._rev,
-				id: response.headers['content-location'].split('/').filter(n => n && true).slice(-1)[0],
-			}
-		})
-	},
-	updateState
+		const apiPromises = [];
+		const htIndex = {};
+		requestsRequired = props.requests.length;
+
+		for (let i = 0; i < requestsRequired; i++) {
+        apiPromises.push(oada.post({
+					url: state.get('oada.domain')+((props.requests[i].path[0] === '/') ?
+																					'':'/') + props.requests[i].path,
+					token: state.get('oada.token'),
+					contentType: props.contentType,
+					data: props.requests[i].data,
+				});
+				htIndex[props.requests[i].path] = i;
+    }//for
+
+    let results = [];
+    Promise.all(apiPromises)
+	    .then(responses => {
+	        const processedResponses = [];
+	        responses.map(response => {
+	            processedResponses.push(response);
+							results.push({
+								// return the resource
+								_rev: response._rev,
+								id: response.headers['content-location'].split('/')
+								            .filter(n => n && true).slice(-1)[0],
+							});
+	        })
+	        return results;
+	    })
+		}
+	//updateState
 ])
 
 // When starting up, it should fetch stuff using using the setup tree, creating

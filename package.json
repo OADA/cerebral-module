@@ -19,6 +19,7 @@
     "babel-preset-latest": "^6.24.1",
     "babel-preset-stage-3": "^6.24.1",
     "babel-register": "^6.26.0",
+    "cerebral": "^4.2.2",
     "chai": "^4.1.2"
   }
 }
