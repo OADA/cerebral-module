@@ -174,12 +174,13 @@ export const post = sequence('oada.post', [
 
 		for (let i = 0; i < requestsRequired; i++) {
         apiPromises.push(oada.post({
-					url: state.get('oada.domain')+((props.requests[i].path[0] === '/') ?
-																					'':'/') + props.requests[i].path,
-					token: state.get('oada.token'),
-					contentType: props.contentType,
-					data: props.requests[i].data,
-				});
+						url: state.get('oada.domain')+((props.requests[i].path[0] === '/') ?
+																						'':'/') + props.requests[i].path,
+						token: state.get('oada.token'),
+						contentType: props.contentType,
+						data: props.requests[i].data,
+					})
+				)//push
 				htIndex[props.requests[i].path] = i;
     }//for
 
