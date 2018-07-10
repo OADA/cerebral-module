@@ -2,19 +2,20 @@ import { props, state } from 'cerebral/tags';
 import { when, set } from 'cerebral/operators';
 import { sequence } from 'cerebral';
 import urlLib from 'url';
+import * as oada from '@oada/cerebral-provider';
 
 //TODO: make the function that recursively gets a tree and creates it if it doesn't exist
 // Make lookup tree for resources -> path so it can quickly be found in cerebral
 
 
 // What assumptions should we make regarding PUTs to resources? Can users PUT to
-// deep parts of a resource??? (They'll need to if putting data points to 
+// deep parts of a resource??? (They'll need to if putting data points to
 // as-harvested.
 
-export const authorize = sequence('oada.authorize', [
-	({state, oada, path}) => { 
-		return oada.authorize({
-			domain: state.get('oada.hostname'), 
+export const connect = sequence('oada.connect', [
+	({state, oada, path}) => {
+		return oada.connect({
+			domain: state.get('oada.hostname'),
 			options: state.get('oada.options')
 		}).then((response) => {
 			return path.authorized({token:response.accessToken})
@@ -34,7 +35,7 @@ export const authorize = sequence('oada.authorize', [
 ])
 
 export const init = sequence('oada.init', [
-	authorize,
+	connect,
 ])
 
 export const fetchTree = sequence('oada.fetchTree', [
@@ -44,24 +45,43 @@ export const fetchTree = sequence('oada.fetchTree', [
 	}),
 	fetch,
 	when(props`result`), {
-		true: [({state, props}) => state.set('oada.'+props.path.split('/').filter(n=>n&&true).join('.'), props.result)],
+		true: [({state, props}) => state.set('oada.'+props.path.split('/')
+															.filter(n=>n&&true).join('.'), props.result)],
 		false: [],
 	},
 ])
 
 export const get = sequence('oada.get', [
 	({oada, state, props}) => {
-		return oada.get({
-			url: state.get('oada.domain')+((props.path[0] === '/') ? '':'/')+props.path,
-			token: state.get('oada.token')
-		}).then((res) => {
-			return {
-				data: res.data,
-				cerebralPath: props.path.split('/').filter(n=>n&&true).join('.')
-			}
-		})
-	},
-	set(state`oada.${props`cerebralPath`}`, props`data`),
+
+		const apiPromises = [];
+    requestsRequired = props.requests.length;
+
+    for (let i = requestsRequired; i > 0; i--) {
+        apiPromises.push(oada.get({
+					url: state.get('oada.domain') + ((props.requests[i].path[0] === '/') ?
+					     '':'/') + props.requests[i].path,
+					token: state.get('oada.token')
+				}));
+    }
+
+    let results = [];
+    Promise.all(apiPromises)
+	    .then(responses => {
+	        const processedResponses = [];
+	        responses.map(response => {
+	            processedResponses.push(response);
+							results.push({
+								data: response.data,
+								//cerebralPath: props.path.split('/').filter(n=>n&&true).join('.')
+							})
+	        }
+
+	        return results;
+	    });
+
+		)
+	//set(state`oada.${props`cerebralPath`}`, props`data`),
 ])
 
 export const updateState = sequence('oada.updateState', [
@@ -84,20 +104,36 @@ export const updateState = sequence('oada.updateState', [
 
 export const put = sequence('oada.put', [
 	({oada, state, props}) => {
-		return oada.put({
-			url: state.get('oada.domain')+((props.path[0] === '/') ? '':'/')+props.path,
-			contentType: props.contentType,
-			data: props.data,
-			token: state.get('oada.token'),
-		}).then((response) => {
-			return {
-				// return the resource 
-				_rev: response._rev,
-				id: response.headers['content-location'].split('/').filter(n => n && true).slice(-1)[0],
-			}
-		})
-	},
-	updateState,
+		const apiPromises = [];
+		requestsRequired = props.requests.length;
+
+		for (let i = requestsRequired; i > 0; i--) {
+        apiPromises.push(oada.put({
+					url: state.get('oada.domain')+((props.requests[i].path[0] === '/') ?
+																				'':'/')+props.requests[i].path,
+					contentType: props.contentType,
+					data: props.requests[i].data,
+					token: state.get('oada.token'),
+				}));
+    }
+
+    let results = [];
+    Promise.all(apiPromises)
+	    .then(responses => {
+	        const processedResponses = [];
+	        responses.map(response => {
+	            processedResponses.push(response);
+							results.push({
+								// return the resource
+								_rev: response._rev,
+								id: response.headers['content-location'].split('/')
+								            .filter(n => n && true).slice(-1)[0],
+							});
+	        })
+
+	        return results;
+	    });
+			updateState,
 ])
 
 // Somewhat abandoned.  PUT is preferred.  Create the uuid and send it along.
@@ -110,7 +146,7 @@ export const post = sequence('oada.post', [
 			data: props.data,
 		}).then((response) => {
 			return {
-				// return the resource 
+				// return the resource
 				_rev: response._rev,
 				id: response.headers['content-location'].split('/').filter(n => n && true).slice(-1)[0],
 			}
@@ -200,7 +236,7 @@ function smartTreeFetch({oada, props, state, path}) {
 			if (setupTree._type) { // its a resource
 				return oada.get({
 					url,
-					token: props.token 
+					token: props.token
 				}).then((response) => {
 					returnData = response.data;
 					return
@@ -215,12 +251,14 @@ function smartTreeFetch({oada, props, state, path}) {
 				if (key === '*') {
 					return Promise.map(Object.keys(returnData), (resKey) => {
 						if (resKey.charAt(0) === '_') return
-						return smartPut(url+'/'+resKey, setupTree[key] || {}, returnData[key]).then((res) => {
+						return smartPut(url+'/'+resKey, setupTree[key] || {},
+						       returnData[key]).then((res) => {
 							return returnData[resKey] = res;
 						})
 					})
 				} else if (typeof setupTree[key] === 'object') {
-					return smartPut(url+'/'+key, setupTree[key] || {}, returnData[key]).then((res) => {
+					return smartPut(url+'/'+key, setupTree[key] || {},
+					       returnData[key]).then((res) => {
 						return returnData[key] = res;
 					})
 				} else return returnData[key]
@@ -229,10 +267,10 @@ function smartTreeFetch({oada, props, state, path}) {
 			})
 		}).catch((err) => {
 			console.log(err.response)
-			// Put the data on the server and try to GET it over again. The 
-			// replaceLinks function will create all of the data down to the next 
-			// resource and we don't want to recursively and redundantly PUT key by 
-			// key all the way down. We just want to skip from one resource down to 
+			// Put the data on the server and try to GET it over again. The
+			// replaceLinks function will create all of the data down to the next
+			// resource and we don't want to recursively and redundantly PUT key by
+			// key all the way down. We just want to skip from one resource down to
 			// the next.
 			if (err.response.status === 404) {
 				return replaceLinks(setupTree).then((data) => {
@@ -280,39 +318,6 @@ function makeResourceAndLink({oada, token, url, data}) {
 	})
 }
 
-	/*
-function makeResourceAndLink(oada, domain, token, path, data) {
-	
-	let createResource = oada.put({
-			url: state.get('oada.domain')+((props.path[0] === '/') ? '':'/')+props.path,
-			contentType: data._type
-			data,
-			token,
-	let createResource = axios({
-		method: data._id ? 'put' : 'post',
-		url: data._id ? domain+'/'+_id : domain+'/resources',
-		headers: {
-			Authorization: 'Bearer '+token,
-			'Content-Type': data._type
-		},
-		data
-	})
-	
-	let link = axios({
-		url: domain+path,
-		method: 'put',
-		headers: {
-			Authorization: 'Bearer '+token,
-			'Content-Type': data._type
-		},
-		data: {_id:data._id}
-	})
-	if (data._rev) link.data._rev = '0-0'
-
-	return Promise.join(createResource, link)
-}
-*/
-
 function fetch({oada, props, state, path}) {
 	let recursiveGet = (token, url, setupTree, returnData) => {
 		return Promise.try(() => {
@@ -320,7 +325,7 @@ function fetch({oada, props, state, path}) {
 			if (setupTree._type) { // its a resource
 				return oada.get({
 					url,
-					token: props.token 
+					token: props.token
 				}).then((response) => {
 					returnData = response.data;
 					return
@@ -347,7 +352,7 @@ function fetch({oada, props, state, path}) {
 			}).then(() => {
 				return returnData
 			})
-		// Catch errors. 404s 
+		// Catch errors. 404s
 		}).catch((err) => {
 			return
 		})
@@ -378,7 +383,7 @@ export const oadaDelete = sequence('oada.delete', [
 ])
 
 //
-// linkToId		 : Whether to link to the given path (false) or the path 
+// linkToId		 : Whether to link to the given path (false) or the path
 //							 concatenated with the uuid returned by the POST (true).
 //
 // path				 : Where to link the created resource.
@@ -402,11 +407,11 @@ export const createResourceAndLink = sequence('oada.createResourceAndLink', [
 	// Link the new resource
 	({state, props}) => {
 		let content = {
-			_id: 'resources/'+props.id, 
+			_id: 'resources/'+props.id,
 			_rev: props._rev || '0-0'
 		}
 		// Link to given path or path plus the random ID created by the POST
-		// Its important to perform the PUT in this manner so that the parent 
+		// Its important to perform the PUT in this manner so that the parent
 		// resource gets updated.
 		let data = (props.linkToId) ? {[props.id]: content} : content;
 		return {
@@ -417,51 +422,4 @@ export const createResourceAndLink = sequence('oada.createResourceAndLink', [
 	put,
 ])
 
-export const registerWatch = sequence('oada.registerWatch', [
-	({state, props, oada}) => {
-		return Promise.map(Object.keys(props.watches || {}), (_id) => {
-			state.set(`oada.watches.${_id}`, props.watches[_id])
-			return oada.watch({
-				token: state.get('oada.token'),
-				signalName: props.watches[_id].signalPath,
-				url: state.get('oada.domain')+((props.watches[_id].path[0] === '/') ? '':'/')+props.watches[_id].path,
-			})
-		}).then(() => {
-			return
-		}).catch((err) => {
-			return
-		})
-	},
 ])
-
-export const configureWs = sequence('oada.configureWs', [
-	({state, props, oada}) => {
-		return oada.configureWs({
-			url: state.get('oada.domain')
-		}).then((socketApi) => {
-			return {socketApi}
-		})
-	},
-	set(state`oada.websocket`, props`socketApi`),
-	set(state`oada.domain`, props`socketApi.url`)
-])
-
-export const configureCache = sequence('oada.configureCache', [
-	({props, oada}) => {
-		return oada.configureCache({
-			name: 'TrialsTracker'
-		})
-	},
-])
-
-export const clearCache = sequence('oada.clearCache', [
-	({oada}) => {
-		return oada.clearCache()//.then(() => {
-			//			return oada.resetWs({
-			//	url: state.get('oada.domain'),
-			//})
-		//})
-	}
-])
-
-

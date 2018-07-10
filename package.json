@@ -4,8 +4,21 @@
   "description": "oada cerebral module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha -w --require babel-polyfill --compilers js:babel-register test/**/*.test.js",
+    "build": "babel src --out-dir build --presets=env",
+    "prepublish": "npm run build",
+    "build-watch": "babel --watch src --out-dir build --presets=env",
+    "dev": "cpx --watch --verbose '../cerebral-privider/**' './node_modules/@oada/oada-provider/'"
   },
-  "author": "",
-  "license": "Apache-2.0"
+  "author": "oada",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@oada/cerebral-provider": "^0.8.3",
+    "babel-polyfill": "^6.26.0",
+    "babel-preset-env": "^1.7.0",
+    "babel-preset-latest": "^6.24.1",
+    "babel-preset-stage-3": "^6.24.1",
+    "babel-register": "^6.26.0",
+    "chai": "^4.1.2"
+  }
 }
