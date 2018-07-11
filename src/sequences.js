@@ -2,6 +2,7 @@ import { props, state } from 'cerebral/tags';
 import { when, set } from 'cerebral/operators';
 import { sequence } from 'cerebral';
 import urlLib from 'url';
+import Promise from 'bluebird';
 import * as oada from '@oada/cerebral-provider';
 
 //TODO: make the function that recursively gets a tree and creates it if it doesn't exist
@@ -455,7 +456,7 @@ export const createResourceAndLink = sequence('oada.createResourceAndLink', [
 	// Link the new resource
 	({state, props}) => {
 		let content = {
-			_id: 'resources/'+props.id,
+			_id: 'resources/' + props.id,
 			_rev: props._rev || '0-0'
 		}
 		// Link to given path or path plus the random ID created by the POST

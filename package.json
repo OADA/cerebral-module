@@ -2,13 +2,13 @@
   "name": "@oada/cerebral-module",
   "version": "0.8.1",
   "description": "oada cerebral module",
-  "main": "index.js",
+  "main": "./build/index.js",
   "scripts": {
     "test": "mocha -w --require babel-polyfill --compilers js:babel-register test/**/*.test.js",
     "build": "babel src --out-dir build --presets=env",
     "prepublish": "npm run build",
     "build-watch": "babel --watch src --out-dir build --presets=env",
-    "dev": "cpx --watch --verbose '../cerebral-provider/**' './node_modules/@oada/oada-provider/'"
+    "dev": "cpx --watch --verbose '../cerebral-provider/src/**' './node_modules/@oada/oada-provider/'"
   },
   "author": "oada",
   "license": "Apache-2.0",
