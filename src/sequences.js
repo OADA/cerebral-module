@@ -3,21 +3,13 @@ import { when, set } from 'cerebral/operators';
 import { sequence } from 'cerebral';
 import urlLib from 'url';
 import Promise from 'bluebird';
-import * as oada from '@oada/cerebral-provider';
 
-//TODO: make the function that recursively gets a tree and creates it if it doesn't exist
-// Make lookup tree for resources -> path so it can quickly be found in cerebral
-
-
-// What assumptions should we make regarding PUTs to resources? Can users PUT to
-// deep parts of a resource??? (They'll need to if putting data points to
-// as-harvested.
-
-export const connect = sequence('oada.connect', [
-	({state, oada, path}) => {
+export const connect = sequence('connect', [
+	({state, oada, path, props}) => {
 		return oada.connect({
-			domain: state.get('oada.hostname'),
-			options: state.get('oada.options')
+			domain: props.domain,
+			token: props.token,
+			options: props.options
 		}).then((response) => {
 			return path.authorized({token:response.accessToken})
 		}).catch(() => {
@@ -44,13 +36,13 @@ export const get = sequence('oada.get', [
 
 		const apiPromises = [];
 		const htIndex = {};
-    requestsRequired = props.requests.length;
+    let requestsRequired = props.requests.length;
 
-    for(let i = 0; i < arrayLength; i++){
+    for(let i = 0; i < requestsRequired; i++){
         apiPromises.push(oada.get({
-					url: state.get('oada.domain') + ((props.requests[i].path[0] === '/') ?
-					                                    '':'/') + props.requests[i].path,
-					token: state.get('oada.token')
+					url: props.domain + ((props.requests[i].path[0] === '/') ? '':'/') +
+					                    props.requests[i].path,
+					token: props.token,
 				}));
 				htIndex[props.requests[i].path] = i;
     }//for
@@ -61,12 +53,14 @@ export const get = sequence('oada.get', [
 	        const processedResponses = [];
 	        responses.map(response => {
 	            processedResponses.push(response);
+							//console.log('response', response);
 							results.push({
 								_id: response.data._id,
 								data: response.data,
 								//cerebralPath: props.path.split('/').filter(n=>n&&true).join('.')
-								cerebralPath: props.requests[htIndex[response.data.localtion]]
-																.path.split('/').filter(n=>n&&true).join('.')
+								// is it the case that data.location will be the same as the path that we sent?
+								// cerebralPath: props.requests[htIndex[response.data.location]]
+								// 								.path.split('/').filter(n=>n&&true).join('.')
 							})
 	        });
 
@@ -120,15 +114,15 @@ export const put = sequence('oada.put', [
 	({oada, state, props}) => {
 		const apiPromises = [];
 		const htIndex = {};
-		requestsRequired = props.requests.length;
+		let requestsRequired = props.requests.length;
 
 		for (let i = 0; i < requestsRequired; i++) {
         apiPromises.push(oada.put({
-					url: state.get('oada.domain') + ((props.requests[i].path[0] === '/') ?
-																				'':'/') + props.requests[i].path,
+					url: props.domain + ((props.requests[i].path[0] === '/') ? '':'/') +
+					                    props.requests[i].path,
 					contentType: props.contentType,
 					data: props.requests[i].data,
-					token: state.get('oada.token'),
+					token: props.token,
 				}));
 				htIndex[props.requests[i].path] = i;
     }//for
@@ -150,7 +144,7 @@ export const put = sequence('oada.put', [
 	        return results;
 	    })
 		}
-		//updateState
+		//updateState //FIXME: I have to update this to use multiple requests
 ])
 
 // Somewhat abandoned.  PUT is preferred.  Create the uuid and send it along.
@@ -162,9 +156,9 @@ export const post = sequence('oada.post', [
 
 		for (let i = 0; i < requestsRequired; i++) {
         apiPromises.push(oada.post({
-						url: state.get('oada.domain')+((props.requests[i].path[0] === '/') ?
-																						'':'/') + props.requests[i].path,
-						token: state.get('oada.token'),
+						url: props.domain + ((props.requests[i].path[0] === '/') ?'':'/') +
+						     props.requests[i].path,
+						token: props.token,
 						contentType: props.contentType,
 						data: props.requests[i].data,
 					})
@@ -193,20 +187,43 @@ export const post = sequence('oada.post', [
 
 export const oadaDelete = sequence('oada.delete', [
 	({oada, state, props}) => {
-		return oada.delete({
-			url: state.get('oada.domain')+((props.path[0] === '/') ? '':'/')+props.path,
-			token: state.get('oada.token'),
-		})
+		const apiPromises = [];
+		const htIndex = {};
+		let requestsRequired = props.requests.length;
+
+		for (let i = 0; i < requestsRequired; i++) {
+				apiPromises.push(
+					oada.delete({
+						url: props.domain + ((props.requests[i].path[0] === '/') ? '':'/') +
+						     props.requests[i].path,
+						token: props.token,
+					})
+				)//push
+				htIndex[props.requests[i].path] = i;
+		}//for
+
+		let results = [];
+		Promise.all(apiPromises)
+			.then(responses => {
+					// const processedResponses = [];
+					// responses.map(response => {
+					// 		processedResponses.push(response);
+					// })
+					return responses;
+			})
 	},
-	when(props`path`, (value) => /^\/?resources/.test(value)), {
-		true: sequence('deletedResource', []),
-		false: sequence('didntDeleteResource', [
-			({state, props}) => {
-				let pieces = props.path.split('/').filter(n=>n&&true)
-				return {
-					path: pieces.slice(0,pieces.length-1).join('/'),
-				}
-			},
-		]),
-	},
+
+
+	// FIXME: Have to change this to include multiple requests (array)
+	// when(props`path`, (value) => /^\/?resources/.test(value)), {
+	// 	true: sequence('deletedResource', []),
+	// 	false: sequence('didntDeleteResource', [
+	// 		({state, props}) => {
+	// 			let pieces = props.path.split('/').filter(n=>n&&true)
+	// 			return {
+	// 				path: pieces.slice(0,pieces.length-1).join('/'),
+	// 			}
+	// 		},
+	// 	]),
+	// },
 ])
