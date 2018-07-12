@@ -1,9 +1,11 @@
 process.env.NODE_TLS_REJECT_UNAUTHORIZED=0;
-import { Provider } from 'cerebral';
+import { Provider }     from 'cerebral';
 import { props, state } from 'cerebral/tags';
 import { CerebralTest } from 'cerebral/test';
-import oadaModule from '../src';
-import assert from 'assert';
+import oadaModule       from '../src';
+import assert           from 'assert';
+import yaml             from 'js-yaml';
+import fs               from 'fs';
 
 import chai from 'chai';
 let expect = chai.expect;
@@ -19,14 +21,14 @@ let _options = {
             scope: 'oada.yield:all'
         };
 
-const numberSamples = 1;
+const numberSamples = 10;
 
 function createRequests(){
   let requests = [];
 
   for(let i=0; i<numberSamples; i++){
     let request = {
-      path: '/bookmarks/test' + i,
+      path: '/bookmarks/serviotest' + i,
       data: {test: i}
     }
     requests.push(request);
@@ -35,99 +37,94 @@ function createRequests(){
   return requests;
 }
 
-
 let requests = createRequests();
 
-// state.set('oada.domain', 'https://vip3.ecn.purdue.edu');
-// state.set('oada.hostname', 'vip3.ecn.purdue.edu');
-//state.set('oada.options');
 const cerebral = CerebralTest(oadaModule); // Expects a Module
 
+/**
+*    Testing connection requests
+*/
 describe('#connection()', function() {
   this.timeout(30000)
   it('should connect using a token', () => {
-    //const cerebral = CerebralTest(oadaModule); // Expects a Module
-    //let connect = cerebral.getSignal('connect')
-    //console.log(connect)
+    // Runs Cerebral Signal -> Sequence
     return cerebral.runSignal('connect', {
                               token: _token,
                               domain: _domain
                             }).then(({ state }) => {
+      // state.isAuthenticated should be true after the call
       expect(state.oada.isAuthenticated).to.equal(true);
-      //console.log('state', state);
     })
   })
 
   it('should connect using a token and options', () => {
-    //const cerebral = CerebralTest(oadaModule);
-    //console.log(cerebral);
-    //let connect = cerebral.getSignal('connect');
     return cerebral.runSignal('connect', {
                                           token: _token,
                                           domain: _domain,
                                           options: _options
                               }).then(({ state }) => {
+      // state.isAuthenticated should be true after the call
       expect(state.oada.isAuthenticated).to.equal(true);
-      //console.log('state', state);
     })
   })
 
   it('should connect using a token, options, and metadata', () => {
-    //const cerebral = CerebralTest(oadaModule);
-    //console.log(cerebral);
-    //let connect = cerebral.getSignal('connect');
     return cerebral.runSignal('connect', {
                                           token: _token,
                                           domain: _domain,
                                           options: _options,
                                           metadata: _options.metadata
                                         }).then(({ state }) => {
+      // state.isAuthenticated should be true after the call
       expect(state.oada.isAuthenticated).to.equal(true);
-      //console.log('state', state);
     })
   })
 });
 
+/**
+*    Testing PUT requests
+*/
 describe('#PUT()', function() {
   this.timeout(30000);
-  //console.log(requests);
   it('should PUT ' + numberSamples + ' requests using path', () => {
 
     return cerebral.runSignal('put', {
                                       token: _token,
                                       domain: _domain,
                                       requests: requests
-                              }).then(({ results }) => {
-      //expect(state.oada.isAuthenticated).to.equal(true);
-      //console.log('state', state);
-      //console.log('results ', results);
-      //console.log('n results received ', results.length);
+                              }).then(({state}) => {
+      //state should include results
+      expect(JSON.stringify(state)).to.include('results');
+
     })
   })
 });
 
+/**
+*    Testing GET requests
+*/
 describe('#GET()', function() {
   this.timeout(30000);
-  //console.log(requests);
-  let start = new Date();
+
   it('should GET ' + numberSamples + ' requests using path', () => {
 
     return cerebral.runSignal('get', {
                                       token: _token,
                                       domain: _domain,
                                       requests: requests
-                              }).then(({ results }) => {
-      //expect(state.oada.isAuthenticated).to.equal(true);
-      //console.log('state', state);
-      console.log('GET results ', results);
-      //console.log('n results received ', results.length);
+                              }).then(({ state }) => {
+      //state should include results
+      expect(JSON.stringify(state)).to.include('results');
     })
   })
 });
 
+/**
+*    Testing DELETE requests
+*/
 describe('#DELETE()', function() {
   this.timeout(30000);
-  //console.log(requests);
+
   it('should DELETE ' + numberSamples + ' requests using path', () => {
 
     return cerebral.runSignal('oadaDelete', {
@@ -135,10 +132,7 @@ describe('#DELETE()', function() {
                                       domain: _domain,
                                       requests: requests
                               }).then(({ results }) => {
-      //expect(state.oada.isAuthenticated).to.equal(true);
-      //console.log('state', state);
-      //console.log('DELETE results ', results);
-      //console.log('n results received ', results.length);
+
     })
   })
 });

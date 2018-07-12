@@ -38,36 +38,30 @@ export const get = sequence('oada.get', [
 		const htIndex = {};
     let requestsRequired = props.requests.length;
 
-    for(let i = 0; i < requestsRequired; i++){
-        apiPromises.push(oada.get({
-					url: props.domain + ((props.requests[i].path[0] === '/') ? '':'/') +
-					                    props.requests[i].path,
-					token: props.token,
-				}));
-				htIndex[props.requests[i].path] = i;
-    }//for
-
     let results = [];
-    Promise.all(apiPromises)
-	    .then(responses => {
+    return Promise.map(props.requests, (request)=>{
+			return oada.get({
+				url: props.domain + ((request.path[0] === '/') ? '':'/') + request.path,
+				token: props.token,
+			})
+		}).then(responses => {
 	        const processedResponses = [];
-	        responses.map(response => {
+	        responses.map((response, i) => {
 	            processedResponses.push(response);
-							//console.log('response', response);
+							let _cerebralPath = props.requests[i]
+																 .path.split('/').filter(n=>n&&true).join('.')
+							let _responseData = response.data;
 							results.push({
 								_id: response.data._id,
-								data: response.data,
-								//cerebralPath: props.path.split('/').filter(n=>n&&true).join('.')
-								// is it the case that data.location will be the same as the path that we sent?
-								// cerebralPath: props.requests[htIndex[response.data.location]]
-								// 								.path.split('/').filter(n=>n&&true).join('.')
+								data: _responseData,
+								cerebralPath: _cerebralPath
 							})
+							state.set('oada'+_cerebralPath, _responseData);
 	        });
-
-	        return results;
+					state.set('results', results);
+	        return {results};
 	    });
 		}
-	//set(state`oada.${props`cerebralPath`}`, props`data`),
 ])
 
 export const updateState = sequence('oada.updateState', [
@@ -112,39 +106,36 @@ export const updateState = sequence('oada.updateState', [
 
 export const put = sequence('oada.put', [
 	({oada, state, props}) => {
-		const apiPromises = [];
-		const htIndex = {};
-		let requestsRequired = props.requests.length;
-
-		for (let i = 0; i < requestsRequired; i++) {
-        apiPromises.push(oada.put({
-					url: props.domain + ((props.requests[i].path[0] === '/') ? '':'/') +
-					                    props.requests[i].path,
-					contentType: props.contentType,
-					data: props.requests[i].data,
-					token: props.token,
-				}));
-				htIndex[props.requests[i].path] = i;
-    }//for
-
-    let results = [];
-    Promise.all(apiPromises)
-	    .then(responses => {
-	        const processedResponses = [];
-	        responses.map(response => {
-	            processedResponses.push(response);
+		return Promise.map(props.requests, (request)=>{
+			//console.log('PUT request ', request);
+			return oada.put({
+				url: props.domain + ((request.path[0] === '/') ? '':'/') +
+														  request.path,
+				contentType: props.contentType,
+				data: request.data,
+				token: props.token,
+			})
+		}).then(responses => {
+					const processedResponses = [];
+					let results = [];
+					//return responses;
+					responses.map((response, i) => {
+							processedResponses.push(response);
+							//console.log('response', response);
 							results.push({
-								// return the resource
 								_rev: response._rev,
 								id: response.headers['content-location'].split('/')
 								            .filter(n => n && true).slice(-1)[0],
-							});
-	        })
+							})
+					});
 
-	        return results;
-	    })
+					state.set('results', results);
+					return {results};
+			});
+		},
+		({props, state}) => {
+
 		}
-		//updateState //FIXME: I have to update this to use multiple requests
 ])
 
 // Somewhat abandoned.  PUT is preferred.  Create the uuid and send it along.
@@ -187,43 +178,19 @@ export const post = sequence('oada.post', [
 
 export const oadaDelete = sequence('oada.delete', [
 	({oada, state, props}) => {
-		const apiPromises = [];
-		const htIndex = {};
-		let requestsRequired = props.requests.length;
+		return Promise.map(props.requests, (request)=>{
 
-		for (let i = 0; i < requestsRequired; i++) {
-				apiPromises.push(
-					oada.delete({
-						url: props.domain + ((props.requests[i].path[0] === '/') ? '':'/') +
-						     props.requests[i].path,
-						token: props.token,
-					})
-				)//push
-				htIndex[props.requests[i].path] = i;
-		}//for
-
-		let results = [];
-		Promise.all(apiPromises)
-			.then(responses => {
-					// const processedResponses = [];
-					// responses.map(response => {
-					// 		processedResponses.push(response);
-					// })
-					return responses;
+			return oada.delete({
+				url: props.domain + ((request.path[0] === '/') ? '':'/') +
+						 request.path,
+				token: props.token,
 			})
-	},
+		}).then(responses => {
+					const processedResponses = [];
+					let results = [];
 
-
-	// FIXME: Have to change this to include multiple requests (array)
-	// when(props`path`, (value) => /^\/?resources/.test(value)), {
-	// 	true: sequence('deletedResource', []),
-	// 	false: sequence('didntDeleteResource', [
-	// 		({state, props}) => {
-	// 			let pieces = props.path.split('/').filter(n=>n&&true)
-	// 			return {
-	// 				path: pieces.slice(0,pieces.length-1).join('/'),
-	// 			}
-	// 		},
-	// 	]),
-	// },
+					state.set('DELETE_responses', responses);
+					return {responses};
+			});
+	}
 ])

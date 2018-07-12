@@ -8,7 +8,7 @@ let _redirect = "";
 let _metadata = "";
 let _scope    = "";
 
-// Get document, or throw exception on error
+// Get OADA configuration document, or throw exception on error
 try {
   let oadaConfig = yaml.safeLoad(fs.readFileSync('./config/oada.yaml', 'utf8'));
 	_redirect = oadaConfig.options.redirect;
