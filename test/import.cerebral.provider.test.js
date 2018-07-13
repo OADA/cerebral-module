@@ -21,7 +21,7 @@ let _options = {
             scope: 'oada.yield:all'
         };
 
-const numberSamples = 10;
+const numberSamples = 1;
 
 function createRequests(){
   let requests = [];
