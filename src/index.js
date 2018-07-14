@@ -3,7 +3,7 @@ import * as signals from './sequences';
 import oada 				from '@oada/cerebral-provider';
 import yaml 				from 'js-yaml';
 import fs   				from 'fs';
-let config = require('../config/config');
+let config = require('./config');
 
 let _redirect = "";
 let _metadata = "";

@@ -1,18 +1,20 @@
 import { props, state } from 'cerebral/tags';
 import { when, set } from 'cerebral/operators';
 import { sequence } from 'cerebral';
-import urlLib from 'url';
+//import urlLib from 'url';
 import Promise from 'bluebird';
 
 export const connect = sequence('connect', [
 	({state, oada, path, props}) => {
-			console.log(oada);
-			let connection = oada.connect({
+			//console.log(oada);
+			return oada.connect({
 				domain: props.domain,
 				token: props.token,
 				options: props.options
-			}).then( (response) => {
-				return path.authorized({connection: response});
+			})
+			.then( (response) => {
+				//console.log('response ', response);
+				return path.authorized({token: response.token, connection: response});
 				//return result;
 			}).catch( () => {
 				return path.unauthorized({});
