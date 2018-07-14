@@ -53,6 +53,7 @@ describe('#connection()', function() {
                               domain: _domain
                             }).then(({ state }) => {
       // state.isAuthenticated should be true after the call
+      console.log(state);
       expect(state.oada.isAuthenticated).to.equal(true);
     })
   })

@@ -1,19 +1,19 @@
 {
   "name": "@oada/cerebral-module",
-  "version": "0.8.4",
+  "version": "0.8.5",
   "description": "oada cerebral module",
-  "main": "./build/index.js",
+  "main": "./index.js",
   "scripts": {
     "test": "mocha -w --require babel-polyfill --compilers js:babel-register test/**/*.test.js",
-    "build": "babel src --out-dir build --presets=env",
+    "build": "babel src --out-dir ./ --presets=env",
     "prepublish": "npm run build",
-    "build-watch": "babel --watch src --out-dir build --presets=env",
+    "build-watch": "babel --watch src --out-dir ./ --presets=env",
     "dev": "cpx --watch --verbose '../cerebral-provider/src/**' './node_modules/@oada/oada-provider/'"
   },
   "author": "oada",
   "license": "Apache-2.0",
   "dependencies": {
-    "@oada/cerebral-provider": "^0.8.5",
+    "@oada/cerebral-provider": "^0.8.7",
     "assert": "^1.4.1",
     "babel-polyfill": "^6.26.0",
     "babel-preset-env": "^1.7.0",

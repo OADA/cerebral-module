@@ -6,26 +6,57 @@ import Promise from 'bluebird';
 
 export const connect = sequence('connect', [
 	({state, oada, path, props}) => {
-		return oada.connect({
-			domain: props.domain,
-			token: props.token,
-			options: props.options
-		}).then((response) => {
-			return path.authorized({token:response.accessToken})
-		}).catch(() => {
-			return path.unauthorized({})
-		})
-	}, {
-		authorized: sequence('authorized', [
-			set(state`oada.token`, props`token`),
-			set(state`oada.isAuthenticated`, true),
-		]),
-		unauthorized: sequence('unauthorized', [
-			set(state`oada.isAuthenticated`, false),
-			set(state`error`, {})
-		]),
-	}
+			console.log(oada);
+			let connection = oada.connect({
+				domain: props.domain,
+				token: props.token,
+				options: props.options
+			}).then( (response) => {
+				return path.authorized({connection: response});
+				//return result;
+			}).catch( () => {
+				return path.unauthorized({});
+			})
+		},
+		{
+			authorized: sequence('authorized', [
+				set(state`oada.token`, props`token`),
+				set(state`oada.isAuthenticated`, true),
+			]),
+			unauthorized: sequence('unauthorized', [
+				set(state`oada.isAuthenticated`, false),
+				set(state`error`, {})
+			]),
+		}
 ])
+
+// export const connect = sequence('connect', [
+// 	({state, oada, path, props}) => {
+// 		let connection =
+//
+//
+//
+// 		return oada.connect({
+// 			domain: props.domain,
+// 			token: props.token,
+// 			options: props.options
+// 		}).then((response) => {
+// 			console.log(response);
+// 			return path.authorized({token:response.accessToken})
+// 		}).catch(() => {
+// 			return path.unauthorized({})
+// 		})
+// 	}, {
+// 		authorized: sequence('authorized', [
+// 			set(state`oada.token`, props`token`),
+// 			set(state`oada.isAuthenticated`, true),
+// 		]),
+// 		unauthorized: sequence('unauthorized', [
+// 			set(state`oada.isAuthenticated`, false),
+// 			set(state`error`, {})
+// 		]),
+// 	}
+// ])
 
 export const init = sequence('oada.init', [
 	connect,
