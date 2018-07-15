@@ -10,12 +10,13 @@ export const connect = sequence('connect', [
 				domain: props.domain,
 				token: props.token,
 				options: props.options,
-				noWebsocket: props.noWebsocket || false,
-                cache: props.cache || false,
+				noWebsocket: props.noWebsocket || true,
+        cache: props.cache || false,
 			})
 			.then( (response) => {
 				//console.log('response ', response);
-				return path.authorized({token: response.token, connection_id: 0, connection: response});
+				return path.authorized({token: response.token, connection_id: 0,
+					                      connection: response});
 				//return result;
 			}).catch( () => {
 				return path.unauthorized({});
@@ -234,14 +235,14 @@ export const oadaDelete = sequence('oada.delete', [
 
 
 export const resetCache = sequence('oada.resetCache', [
-    ({oada}) => {
+    ({oada, state, props}) => {
 			let connection = state.get('oada.connection' + props.connection_id);
       return connection.resetCache();
     }
 ]);
 
 export const disconnect = sequence('oada.disconnect', [
-    ({oada}) => {
+    ({oada, state, props}) => {
 			let connection = state.get('oada.connection' + props.connection_id);
       return connection.disconnect({connection_id: props.connection_id});
     }
