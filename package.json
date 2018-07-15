@@ -1,6 +1,6 @@
 {
   "name": "@oada/cerebral-module",
-  "version": "0.8.9",
+  "version": "0.8.10",
   "description": "oada cerebral module",
   "main": "./index.js",
   "scripts": {
@@ -13,7 +13,7 @@
   "author": "oada",
   "license": "Apache-2.0",
   "dependencies": {
-    "@oada/cerebral-provider": "^0.8.8",
+    "@oada/cerebral-provider": "^0.8.9",
     "assert": "^1.4.1",
     "babel-polyfill": "^6.26.0",
     "babel-preset-env": "^1.7.0",

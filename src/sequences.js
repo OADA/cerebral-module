@@ -211,7 +211,6 @@ export const put = sequence('oada.put', [
 		}
 ])
 
-
 export const oadaDelete = sequence('oada.delete', [
 	({oada, state, props}) => {
 		return Promise.map(props.requests, (request)=>{
@@ -232,6 +231,21 @@ export const oadaDelete = sequence('oada.delete', [
 			});
 	}// oada state props
 ])
+
+
+export const resetCache = sequence('oada.resetCache', [
+    ({oada}) => {
+			let connection = state.get('oada.connection' + props.connection_id);
+      return connection.resetCache();
+    }
+]);
+
+export const disconnect = sequence('oada.disconnect', [
+    ({oada}) => {
+			let connection = state.get('oada.connection' + props.connection_id);
+      return connection.disconnect({connection_id: props.connection_id});
+    }
+]);
 
 // Somewhat abandoned.  PUT is preferred.  Create the uuid and send it along.
 export const post = sequence('oada.post', [
