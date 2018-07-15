@@ -1,20 +1,21 @@
 import { props, state } from 'cerebral/tags';
 import { when, set } from 'cerebral/operators';
 import { sequence } from 'cerebral';
-//import urlLib from 'url';
 import Promise from 'bluebird';
 
 export const connect = sequence('connect', [
 	({state, oada, path, props}) => {
-			//console.log(oada);
+			//console.log(props);
 			return oada.connect({
 				domain: props.domain,
 				token: props.token,
-				options: props.options
+				options: props.options,
+				noWebsocket: props.noWebsocket || false,
+                cache: props.cache || false,
 			})
 			.then( (response) => {
 				//console.log('response ', response);
-				return path.authorized({token: response.token, connection: response});
+				return path.authorized({token: response.token, connection_id: 0, connection: response});
 				//return result;
 			}).catch( () => {
 				return path.unauthorized({});
@@ -24,6 +25,8 @@ export const connect = sequence('connect', [
 			authorized: sequence('authorized', [
 				set(state`oada.token`, props`token`),
 				set(state`oada.isAuthenticated`, true),
+				set(state`oada.token`, props`connection_id`),
+				set(state`oada.connection${props`connection_id`}`, props`connection`)
 			]),
 			unauthorized: sequence('unauthorized', [
 				set(state`oada.isAuthenticated`, false),
@@ -67,13 +70,11 @@ export const init = sequence('oada.init', [
 export const get = sequence('oada.get', [
 	({oada, state, props}) => {
 
-		const apiPromises = [];
-		const htIndex = {};
-    let requestsRequired = props.requests.length;
+		let connection = state.get('oada.connection' + props.connection_id);
 
-    let results = [];
-    return Promise.map(props.requests, (request)=>{
-			return oada.get({
+        let results = [];
+    	return Promise.map(props.requests, (request)=>{
+			return connection.get({
 				url: props.domain + ((request.path[0] === '/') ? '':'/') + request.path,
 				token: props.token,
 			})
@@ -81,21 +82,56 @@ export const get = sequence('oada.get', [
 	        const processedResponses = [];
 	        responses.map((response, i) => {
 	            processedResponses.push(response);
-							let _cerebralPath = props.requests[i]
-																 .path.split('/').filter(n=>n&&true).join('.')
-							let _responseData = response.data;
-							results.push({
-								_id: response.data._id,
-								data: _responseData,
-								cerebralPath: _cerebralPath
-							})
-							state.set('oada'+_cerebralPath, _responseData);
+				let _cerebralPath = props.requests[i]
+													 .path.split('/').filter(n=>n&&true).join('.')
+				let _responseData = response.data;
+				results.push({
+					_id: response.data._id,
+					data: _responseData,
+					cerebralPath: _cerebralPath
+				})
+				state.set('oada'+_cerebralPath, _responseData);
 	        });
-					state.set('results', results);
+
+	        // setting results' state
+			state.set('results', results);
 	        return {results};
 	    });
-		}
+	}// oada state props
 ])
+
+// export const get = sequence('oada.get', [
+// 	({oada, state, props}) => {
+
+// 		const apiPromises = [];
+// 		const htIndex = {};
+//     let requestsRequired = props.requests.length;
+
+//     let results = [];
+//     return Promise.map(props.requests, (request)=>{
+// 			return oada.get({
+// 				url: props.domain + ((request.path[0] === '/') ? '':'/') + request.path,
+// 				token: props.token,
+// 			})
+// 		}).then(responses => {
+// 	        const processedResponses = [];
+// 	        responses.map((response, i) => {
+// 	            processedResponses.push(response);
+// 							let _cerebralPath = props.requests[i]
+// 																 .path.split('/').filter(n=>n&&true).join('.')
+// 							let _responseData = response.data;
+// 							results.push({
+// 								_id: response.data._id,
+// 								data: _responseData,
+// 								cerebralPath: _cerebralPath
+// 							})
+// 							state.set('oada'+_cerebralPath, _responseData);
+// 	        });
+// 					state.set('results', results);
+// 	        return {results};
+// 	    });
+// 		}
+// ])
 
 export const updateState = sequence('oada.updateState', [
 	when(props`path`, (value) => /^\/?resources/.test(value)), {
@@ -141,7 +177,11 @@ export const put = sequence('oada.put', [
 	({oada, state, props}) => {
 		return Promise.map(props.requests, (request)=>{
 			//console.log('PUT request ', request);
-			return oada.put({
+			let connection = state.get('oada.connection' + props.connection_id);
+			//console.log(props.connection_id);
+			//console.log('connection put', connection);
+			return connection.put({
+				connection_id: props.connection_id,
 				url: props.domain + ((request.path[0] === '/') ? '':'/') +
 														  request.path,
 				contentType: props.contentType,
@@ -149,26 +189,48 @@ export const put = sequence('oada.put', [
 				token: props.token,
 			})
 		}).then(responses => {
-					const processedResponses = [];
-					let results = [];
-					//return responses;
-					responses.map((response, i) => {
-							processedResponses.push(response);
-							//console.log('response', response);
-							results.push({
-								_rev: response._rev,
-								id: response.headers['content-location'].split('/')
-								            .filter(n => n && true).slice(-1)[0],
-							})
-					});
+			const processedResponses = [];
+			let results = [];
+			//return responses;
+			responses.map((response, i) => {
+					processedResponses.push(response);
+					//console.log('response', response);
+					results.push({
+						_rev: response._rev,
+						id: response.headers['content-location'].split('/')
+						            .filter(n => n && true).slice(-1)[0],
+					})
+			});
 
-					state.set('results', results);
-					return {results};
+			state.set('results', results);
+			return {results};
 			});
 		},
 		({props, state}) => {
 
 		}
+])
+
+
+export const oadaDelete = sequence('oada.delete', [
+	({oada, state, props}) => {
+		return Promise.map(props.requests, (request)=>{
+
+			let connection = state.get('oada.connection' + props.connection_id);
+
+			return connection.delete({
+				url: props.domain + ((request.path[0] === '/') ? '':'/') +
+						             request.path,
+				token: props.token,
+			})
+		}).then(responses => {
+				const processedResponses = [];
+				let results = [];
+
+				state.set('DELETE_responses', responses);
+				return {responses};
+			});
+	}// oada state props
 ])
 
 // Somewhat abandoned.  PUT is preferred.  Create the uuid and send it along.
@@ -181,7 +243,7 @@ export const post = sequence('oada.post', [
 		for (let i = 0; i < requestsRequired; i++) {
         apiPromises.push(oada.post({
 						url: props.domain + ((props.requests[i].path[0] === '/') ?'':'/') +
-						     props.requests[i].path,
+						                    props.requests[i].path,
 						token: props.token,
 						contentType: props.contentType,
 						data: props.requests[i].data,
@@ -209,21 +271,21 @@ export const post = sequence('oada.post', [
 	//updateState
 ])
 
-export const oadaDelete = sequence('oada.delete', [
-	({oada, state, props}) => {
-		return Promise.map(props.requests, (request)=>{
+// export const oadaDelete = sequence('oada.delete', [
+// 	({oada, state, props}) => {
+// 		return Promise.map(props.requests, (request)=>{
 
-			return oada.delete({
-				url: props.domain + ((request.path[0] === '/') ? '':'/') +
-						 request.path,
-				token: props.token,
-			})
-		}).then(responses => {
-					const processedResponses = [];
-					let results = [];
+// 			return oada.delete({
+// 				url: props.domain + ((request.path[0] === '/') ? '':'/') +
+// 						 request.path,
+// 				token: props.token,
+// 			})
+// 		}).then(responses => {
+// 					const processedResponses = [];
+// 					let results = [];
 
-					state.set('DELETE_responses', responses);
-					return {responses};
-			});
-	}
-])
+// 					state.set('DELETE_responses', responses);
+// 					return {responses};
+// 			});
+// 	}
+// ])
