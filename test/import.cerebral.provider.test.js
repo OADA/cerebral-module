@@ -41,7 +41,8 @@ function createRequests(){
 
   for(let i=0; i<numberSamples; i++){
     let request = {
-      path: '/bookmarks/serviotest' + i,
+      //path: '/bookmarks/serviotest' + i,
+      path: '/bookmarks/operations',
       data: {test: i}
     }
     requests.push(request);
@@ -59,14 +60,10 @@ const cerebral = CerebralTest(oadaModule); // Expects a Module
 */
 describe('#connection()', function() {
   this.timeout(30000);
-  
+
   it('should connect using a token', () => {
     // Runs Cerebral Signal -> Sequence
 
-    // let connection = cerebral.runSignal('connect', {
-    //                           token: _token,
-    //                           domain: _domain
-    //                         })
     return cerebral.runSignal('connect', {
                               token: _token,
                               domain: _domain,
@@ -79,7 +76,7 @@ describe('#connection()', function() {
     })
 
   })//it
-   
+
 
   it('should connect using a token and options', () => {
     return cerebral.runSignal('connect', {
@@ -133,42 +130,8 @@ describe('#PUT()', function() {
           })
 
     })//it
-    
+
   });//describe
-
-// before multiple connections
-
-// return cerebral.runSignal('put', {
-//                                         token: _token,
-//                                         domain: _domain,
-//                                         requests: requests
-//                                 }).then(({state}) => {
-//         //state should include results
-//         expect(JSON.stringify(state)).to.include('results');
-
-//       })
-
- // let connection = cerebral.runSignal('connect', {
-    //                           token: _token,
-    //                           domain: _domain
-    //                         }).then(({ state }) => {
-      // state.isAuthenticated should be true after the call
-      //expect(state.oada.isAuthenticated).to.equal(true);
-
-      //console.log('CONNECTION', connection);
-
-  // return connection.put({
-      //                           connection_id: 0,
-      //                           token: _token,
-      //                           domain: _domain,
-      //                           requests: requests
-      //                       })
-      // .then(({state}) => {
-      //   //state should include results
-      //   console.log('--> PUT results ', state);
-      //   expect(JSON.stringify(state)).to.include('results');
-      //   console.log('--> PUT results ', state);
-
 
 /**
 *    Testing GET requests
