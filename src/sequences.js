@@ -34,7 +34,6 @@ export const connect = sequence('connect', [
     {
         authorized: sequence('authorized', [
             set(state`oada.connections.${props`connection_id`}.token`, props`token`),
-            set(state`oada.${props`connection_id`}.bookmarks`, {}),
         ]),
         unauthorized: sequence('unauthorized', [
             set(state`error`, {})
@@ -77,7 +76,7 @@ export const get = sequence('oada.get', [
                 });
                 */
 
-                state.set('oada.'+props.connection_id+'.'+_cerebralPath, _responseData);
+                if (_responseData) state.set('oada.'+props.connection_id+'.'+_cerebralPath, _responseData);
 
                 return response;
           }).catch( (error) => {
@@ -94,7 +93,20 @@ export const get = sequence('oada.get', [
  * it updates the state of the resource
  * @type {Primitive}
  */
+/*
 export const updateState = sequence('oada.updateState', [
+  var requests = props.requests || [props];
+  ({state, props}) => {
+    return Promise.map(props.responses, (response, i) => {
+      if (/^\/?resources/.test(requests[i].path) {
+
+      } else {
+
+    })
+  }
+
+
+
     when(props`path`, (value) => /^\/?resources/.test(value)), {
         true: sequence('postedToResources', [
             when(props`putPath`), {
@@ -111,6 +123,7 @@ export const updateState = sequence('oada.updateState', [
         ]),
     },
 ]);
+*/
 
 /**
  * it PUT requests the resource to the server
@@ -135,26 +148,11 @@ export const put = sequence('oada.put', [
                 // data: request.data,
                 // token: props.token,
             })
-        }).then(responses => {
-            const processedResponses = [];
-            let results = [];
-
-            responses.map((response, i) => {
-                processedResponses.push(response);
-                //console.log('response', response);
-                results.push({
-                    _rev: response._rev,
-                    id: response.headers['content-location'].split('/')
-                        .filter(n => n && true).slice(-1)[0],
-                })
-            });
-
-            return {results};
+        }).then((responses) => {
+          return {responses}
         });
     },
-    ({props, state}) => {
-
-    }
+    get,
 ]);
 
 /**
@@ -174,13 +172,16 @@ export const oadaDelete = sequence('oada.delete', [
                 // request.path,
                 // token: props.token,
             })
-        }).then(responses => {
-            const processedResponses = [];
-            let results = [];
+        }).then((responses) => {
+            
+            let _cerebralPath = request.path.split('/').filter(n=>n&&true).join('.')
+
+            state.unset('oada.'+props.connection_id+'.'+_cerebralPath);
 
             return {responses};
-        });
-    }// oada state props
+        })
+    },// oada state props
+  //get,
 ]);
 
 /**
