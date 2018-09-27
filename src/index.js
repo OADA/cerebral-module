@@ -1,6 +1,6 @@
 import { Module } 	from 'cerebral';
-import signals from './sequences';
-import oada 				from '@oada/cerebral-provider';
+import * as signals from './sequences';
+import oada	from '@oada/cerebral-provider';
 
 export default Module ({
 

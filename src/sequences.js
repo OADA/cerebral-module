@@ -13,7 +13,7 @@ function domainToConnectionId(domainUrl) {
  * connects to the oada, returns and object with get, put, post, resetCache, disconnect
  * @type {Primitive}
  */
-const connect = sequence('connect', [
+export const connect = sequence('connect', [
   ({state, oada, path, props}) => {
         return oada.connect({
             connection_id: domainToConnectionId(props.domain),
@@ -31,6 +31,7 @@ const connect = sequence('connect', [
             });
             //return result;
         }).catch( (err) => {
+            console.log('!!!!! error')
             console.log(err)
             return path.unauthorized({});
         })
@@ -39,7 +40,6 @@ const connect = sequence('connect', [
         authorized: sequence('authorized', [
             set(state`oada.connections.${props`connection_id`}.token`, props`token`),
             set(state`oada.connections.${props`connection_id`}.domain`, props`domain`),
-            set(state`oada.${props`connection_id`}.watches`, {}),
         ]),
         unauthorized: sequence('unauthorized', [
             set(state`error`, {})
@@ -51,25 +51,15 @@ const connect = sequence('connect', [
  * initializaes the oada mocule (connects)
  * @type {Primitive}
  */
-const init = sequence('oada.init', [
+export const init = sequence('oada.init', [
     connect,
 ]);
 
-function checkWatches(watches, path) {
-  let pieces = path.replace(/^\//, '').split('/');
-  let foundPath;
-  pieces.forEach((piece, i) => {
-    let path = '/'+pieces.slice(0, i+1).join('/');
-    if (watches[path]) foundPath = path
-  })
-  return foundPath
-}
-
-const handleWatch = sequence('oada.handleWatch', [
+export const handleWatch = sequence('oada.handleWatch', [
   equals(props`response.change.type`), {
     'merge': [
       ({state, props}) => {
-        var oldState = state.get(`oada.${props.connection_id}.${props.path}`);
+        var oldState = _.cloneDeep(state.get(`oada.${props.connection_id}.${props.path}`));;
         var newState = _.merge(oldState, props.response.change.body);
         state.set(`oada.${props.connection_id}.${props.path}`, newState);
       },
@@ -87,19 +77,19 @@ const handleWatch = sequence('oada.handleWatch', [
  * using the connection_id provided, it GET requests to the server
  * @type {Primitive}
  */
-const get = sequence('oada.get', [
+export const get = sequence('oada.get', [
   ({oada, state, props}) => {
     return Promise.map(props.requests || [props], (request) => {
       let _cerebralPath = request.path.replace(/^\//, '').split('/').join('.')
       if (request.watch) {
         let conn = state.get(`oada.${request.connection_id || props.connection_id}`);
-        if (conn && conn.watches && checkWatches(conn.watches, request.path)) {
-          return
-        } 
-        request.watch.signals = ['oada.handleWatch', ...request.watch.signals];
-        request.watch.payload = request.watch.payload || {};
-        request.watch.payload.connection_id = request.connection_id || props.connection_id;
-        request.watch.payload.path = _cerebralPath;
+        if (conn) {
+          if (conn && conn.watches && conn.watches[request.path]) return
+          request.watch.signals = [...request.watch.signals, 'oada.handleWatch'];
+          request.watch.payload = request.watch.payload || {};
+          request.watch.payload.connection_id = request.connection_id || props.connection_id;
+          request.watch.payload.path = _cerebralPath;
+        }
       }
       return oada.get({
         connection_id: request.connection_id || props.connection_id,
@@ -111,7 +101,9 @@ const get = sequence('oada.get', [
       }).then((response) => {
         let _responseData = response.data;
         if (_responseData) state.set(`oada.${request.connection_id || props.connection_id}.${_cerebralPath}`, _responseData);
-        if (request.watch) state.set(`oada.${request.connection_id || props.connection_id}.watches.${request.path}`, request.path) 
+        if (request.watch) {
+          state.set(`oada.${request.connection_id || props.connection_id}.watches.${request.path}`, true) 
+        }
         return response;
       }).catch( (error) => {
         console.log(error);
@@ -127,9 +119,9 @@ const get = sequence('oada.get', [
  * it PUT requests the resource to the server
  * @type {Primitive}
  */
-const put = sequence('oada.put', [
+export const put = sequence('oada.put', [
     ({oada, state, props}) => {
-        return Promise.map(props.requests || [props], (request)=>{
+      return Promise.map(props.requests || [props], (request)=>{
             return oada.put({
                 url: request.url, //props.domain + ((request.path[0] === '/') ? '':'/') + request.path,
                 path: request.path,
@@ -143,7 +135,6 @@ const put = sequence('oada.put', [
           return {responses}
         });
     },
-    ({props}) => console.log(props.tree),
     get
 ]);
 
@@ -151,28 +142,28 @@ const put = sequence('oada.put', [
  * requests a DELETE operation to the server. We utilize the connection_id to know which connection to use
  * @type {Primitive}
  */
-const oadaDelete = sequence('oada.delete', [
+export const oadaDelete = sequence('oada.delete', [
   ({oada, state, props}) => {
-      return Promise.map(props.requests || [props], (request)=>{
+      return Promise.map(props.requests || [props], (request) => {
         let _cerebralPath = request.path.replace(/^\//, '').split('/').join('.')
-        if (request.watch) {
-          let conn = state.get(`oada.${request.connection_id || props.connection_id}`);
-          if (conn && conn.watches && checkWatches(conn.watches, request.path)) {
-            return
-          } 
-          request.watch.signals = ['oada.handleWatch', ...request.watch.signals];
-          request.watch.payload = request.watch.payload || {};
-          request.watch.payload.connection_id = request.connection_id || props.connection_id;
-          request.watch.payload.path = _cerebralPath;
+        let conn = state.get(`oada.${request.connection_id || props.connection_id}`);
+        if (request.unwatch && conn && conn.watches) {
+          // Don't send the unwatch request if it isn't being watched already.
+          if (!conn.watches[request.path]) return
         }
         return oada.delete({
           connection_id: request.connection_id || props.connection_id,
           url: request.url,
           path: request.path,
           headers: request.headers || props.headers,
+          unwatch: request.unwatch
         }).then((response) => {
-        // TODO: This is a semi-optimistic update. It waits for the request to return but doesn't explicitly perform a GET to find out
-          state.unset(`oada.${request.connection_id || props.connection_id}.${_cerebralPath}`);
+          if (request.unwatch && conn && conn.watches) {
+            state.unset(`oada.${request.connection_id || props.connection_id}.watches.${request.path}`)
+          } else {
+          // TODO: This is a semi-optimistic update. It waits for the request to return but doesn't explicitly perform a GET to find out
+            state.unset(`oada.${request.connection_id || props.connection_id}.${_cerebralPath}`);
+          }
           return response
         })
       }).then((responses) => {
@@ -185,10 +176,10 @@ const oadaDelete = sequence('oada.delete', [
  * resets or clears the cache
  * @type {Primitive}
  */
-const resetCache = sequence('oada.resetCache', [
+export const resetCache = sequence('oada.resetCache', [
     ({oada, state, props}) => {
       return oada.resetCache({
-        connection_id: props.connection_id,
+        connection_id: props.connection_id || domainToConnectionId(props.domain),
       });
     }
 ]);
@@ -197,14 +188,14 @@ const resetCache = sequence('oada.resetCache', [
  * disconnects from the framework
  * @type {Primitive}
  */
-const disconnect = sequence('oada.disconnect', [
+export const disconnect = sequence('oada.disconnect', [
     ({oada, state, props}) => {
         return oada.disconnect({connection_id: props.connection_id});
     }
 ]);
 
 // Somewhat abandoned.  PUT is preferred.  Create the uuid and send it along.
-const post = sequence('oada.post', [
+export const post = sequence('oada.post', [
     ({props, state, oada}) => {
         const apiPromises = [];
         const htIndex = {};
@@ -240,14 +231,3 @@ const post = sequence('oada.post', [
     }
     //updateState
 ]);
-
-export default {
-  init,
-  connect,
-  delete: oadaDelete,
-  get,
-  put,
-  disconnect,
-  resetCache,
-  handleWatch,
-}
