@@ -1,6 +1,6 @@
 {
   "name": "@oada/cerebral-module",
-  "version": "1.10.2",
+  "version": "2.0.4",
   "description": "oada cerebral module",
   "main": "./index.js",
   "scripts": {
@@ -8,12 +8,13 @@
     "build": "babel src --out-dir ./ --presets=env",
     "prepare": "npm run build",
     "build-watch": "babel --watch src --out-dir ./ --presets=env",
-    "dev": "cpx --watch --verbose './sequences.js' '../TrialsTracker/node_modules/@oada/cerebral-module/sequences.js'"
+    "dev": "cpx --watch --verbose ./sequences.js ../trellisfw-poc/abcaudits/node_modules/@oada/cerebral-module/sequences.js "
   },
   "author": "oada",
   "license": "Apache-2.0",
   "dependencies": {
-    "@oada/cerebral-provider": "^1.10.2",
+    "@cerebral/storage": "^4.2.2",
+    "@oada/cerebral-provider": "^2.0.4",
     "assert": "^1.4.1",
     "babel-polyfill": "^6.26.0",
     "babel-preset-env": "^1.7.0",
@@ -24,5 +25,8 @@
     "chai": "^4.1.2",
     "fs": "^0.0.1-security",
     "url": "^0.11.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0"
   }
 }
