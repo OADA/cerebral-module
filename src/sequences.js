@@ -4,6 +4,7 @@ import { when, merge, unset, equals, set } from 'cerebral/operators';
 import { sequence } from 'cerebral';
 import Promise from 'bluebird';
 import url from 'url'
+Promise.config({warnings: false})                                                
 var error = require('debug')('cerebral-module:error')
 
 function domainToConnectionId(domainUrl) {
