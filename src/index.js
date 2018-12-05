@@ -1,8 +1,7 @@
 import { Module } 	from 'cerebral';
-import * as signals from './sequences';
+import signals from './sequences';
 import oada	from '@oada/cerebral-provider';
 import StorageModule from '@cerebral/storage'
-
 const storage = StorageModule({
 
   target: localStorage,
