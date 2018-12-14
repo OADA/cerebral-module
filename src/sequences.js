@@ -60,12 +60,15 @@ const handleWatch = sequence('oada.handleWatch', [
         var oldState = _.cloneDeep(state.get(`oada.${props.connection_id}.${props.path}`));;
         var newState = _.merge(oldState, props.response.change.body);
         state.set(`oada.${props.connection_id}.${props.path}`, newState);
+        return {oldState}
       },
     ],
     'delete': [
       ({state, props}) => {
-        var nullPath = props.nullPath.replace(/^\//, '').split('/').join('.');
-        state.unset(`oada.${props.connection_id}.${props.path}.${nullPath}`);
+        var nullPath = props.nullPath.split('/').join('.');
+        var oldState = _.cloneDeep(state.get(`oada.${props.connection_id}${nullPath}`));;
+        state.unset(`oada.${props.connection_id}.${props.path}${nullPath}`);
+        return {oldState}
       }
     ]
   }
@@ -77,7 +80,8 @@ const handleWatch = sequence('oada.handleWatch', [
  */
 const get = sequence('oada.get', [
   ({oada, state, props}) => {
-    return Promise.map(props.requests || [], (request, i) => {
+    if (!props.requests) console.warn('Passing request parameters as top level keys of cerebral props will be deprecated. Instead, pass requests in as an array of request objects under the requests key')
+    return Promise.map(props.requests || [props], (request, i) => {
       if (request.complete) return
       let _cerebralPath = request.path.replace(/^\//, '').split('/').join('.')
       if (request.watch) {
@@ -94,7 +98,7 @@ const get = sequence('oada.get', [
         connection_id: request.connection_id || props.connection_id,
         url: request.url,
         path: request.path,
-        headers: request.headers || props.headers,
+        headers: request.headers,
         watch: request.watch,
         tree: request.tree || props.tree,
       }).then((response) => {
@@ -103,7 +107,7 @@ const get = sequence('oada.get', [
         if (request.watch) {
           state.set(`oada.${request.connection_id || props.connection_id}.watches.${request.path}`, true) 
         }
-        props.set(`requests.${i}`, {complete: true})
+        //        props.set(`requests.${i}`, {complete: true})
         return response;
       }).catch((err) => {
         error(err);
@@ -113,6 +117,11 @@ const get = sequence('oada.get', [
       return {responses}
     })
   },// oada state props
+  set(props`url`, undefined),
+  set(props`path`, undefined),
+  set(props`headers`, undefined),
+  set(props`watch`, undefined),
+  set(props`tree`, undefined),
 ]);
 
 /**
@@ -121,27 +130,34 @@ const get = sequence('oada.get', [
  */
 const put = sequence('oada.put', [
   ({oada, state, props}) => {
-    return Promise.map(props.requests || [], (request, i)=>{
+    if (!props.requests) console.warn('Passing request parameters as top level keys of cerebral props will be deprecated. Instead, pass requests in as an array of request objects under the requests key')
+    return Promise.map(props.requests || [props], (request, i)=>{
       if (request.complete) return
       return oada.put({
         url: request.url, //props.domain + ((request.path[0] === '/') ? '':'/') + request.path,
         path: request.path,
         data: request.data,
-        type: request.type || props.type,
-        headers: request.headers || props.headers,
+        type: request.type,
+        headers: request.headers,
         tree: request.tree || props.tree,
         connection_id: request.connection_id || props.connection_id
       }).then((response) => {
         var oldState = _.cloneDeep(state.get(`oada.${request.connection_id || props.connection_id}${request.path.split('/').join('.')}`));;
         var newState = _.merge(oldState, request.data);
         state.set(`oada.${request.connection_id || props.connection_id}${request.path.split('/').join('.')}`, newState);
-        props.set(`requests.${i}`, {complete: true})
+        //        props.set(`requests.${i}`, {complete: true})
         return response;
       })
     }).then((responses) => {
       return {responses}
     });
   },
+  set(props`url`, undefined),
+  set(props`path`, undefined),
+  set(props`data`, undefined),
+  set(props`type`, undefined),
+  set(props`headers`, undefined),
+  set(props`tree`, undefined),
 ]);
 
 /**
@@ -150,35 +166,44 @@ const put = sequence('oada.put', [
  */
 const oadaDelete = sequence('oada.delete', [
   ({oada, state, props}) => {
-    return Promise.map(props.requests || [], (request, i) => {
+    if (!props.requests) console.warn('Passing request parameters as top level keys of cerebral props will be deprecated. Instead, pass requests in as an array of request objects under the requests key')
+    return Promise.map(props.requests || [props], (request, i) => {
       if (request.complete) return
-        let _cerebralPath = request.path.replace(/^\//, '').split('/').join('.')
-        let conn = state.get(`oada.${request.connection_id || props.connection_id}`);
+      let _cerebralPath = request.path.replace(/^\//, '').split('/').join('.')
+      let conn = state.get(`oada.${request.connection_id || props.connection_id}`);
+      if (request.unwatch && conn && conn.watches) {
+        // Don't send the unwatch request if it isn't being watched already.
+        if (!conn.watches[request.path]) return
+      }
+      return oada.delete({
+        connection_id: request.connection_id || props.connection_id,
+        url: request.url,
+        path: request.path,
+        headers: request.headers,
+        unwatch: request.unwatch,
+        type: request.type,
+        tree: request.tree || props.tree
+      }).then((response) => {
+        //Handle watches index and optimistically update
         if (request.unwatch && conn && conn.watches) {
-          // Don't send the unwatch request if it isn't being watched already.
-          if (!conn.watches[request.path]) return
+          state.unset(`oada.${request.connection_id || props.connection_id}.watches.${request.path}`)
+        } else {
+          state.unset(`oada.${request.connection_id || props.connection_id}.${_cerebralPath}`);
         }
-        return oada.delete({
-          connection_id: request.connection_id || props.connection_id,
-          url: request.url,
-          path: request.path,
-          headers: request.headers || props.headers,
-          unwatch: request.unwatch,
-          type: request.type
-        }).then((response) => {
-          //Handle watches index and optimistically update
-          if (request.unwatch && conn && conn.watches) {
-            state.unset(`oada.${request.connection_id || props.connection_id}.watches.${request.path}`)
-          } else {
-            state.unset(`oada.${request.connection_id || props.connection_id}.${_cerebralPath}`);
-          }
-          props.set(`requests.${i}`, {complete: true});
-          return response
-        })
-      }).then((responses) => {
-        return {responses};
+        //      props.set(`requests.${i}`, {complete: true});
+        return response
       })
-    },
+    }).then((responses) => {
+      return {responses};
+    })
+  },
+  set(props`url`, undefined),
+  set(props`path`, undefined),
+  set(props`data`, undefined),
+  set(props`headers`, undefined),
+  set(props`undwatch`, undefined),
+  set(props`type`, undefined),
+  set(props`tree`, undefined),
 ]);
 
 /**
@@ -209,14 +234,15 @@ const disconnect = sequence('oada.disconnect', [
  */
 const post = sequence('oada.post', [
   ({oada, state, props}) => {
-    return Promise.map(props.requests || [], (request, i) => {
+    if (!props.requests) console.warn('Passing request parameters as top level keys of cerebral props will be deprecated. Instead, pass requests in as an array of request objects under the requests key')
+    return Promise.map(props.requests || [props], (request, i) => {
       if (request.complete) return
       return oada.post({
         url: request.url, //props.domain + ((request.path[0] === '/') ? '':'/') + request.path,
         path: request.path,
         data: request.data,
-        type: request.type || props.type,
-        headers: request.headers || props.headers,
+        type: request.type,
+        headers: request.headers,
         tree: request.tree || props.tree,
         connection_id: request.connection_id || props.connection_id
       }).then((response) => {
@@ -224,13 +250,19 @@ const post = sequence('oada.post', [
         var oldState = _.cloneDeep(state.get(`oada.${request.connection_id || props.connection_id}${request.path.split('/').join('.')}`));;
         var newState = _.merge(oldState, request.data);
         state.set(`oada.${request.connection_id || props.connection_id}.${request.path.split('/').join('.')}`, newState);
-        props.set(`requests.${i}`, {complete: true});
+        //props.set(`requests.${i}`, {complete: true});
         return
       })
     }).then((responses) => {
       return {responses}
     });
   },
+  set(props`url`, undefined),
+  set(props`path`, undefined),
+  set(props`data`, undefined),
+  set(props`type`, undefined),
+  set(props`headers`, undefined),
+  set(props`tree`, undefined),
 ]);
 
 export default {

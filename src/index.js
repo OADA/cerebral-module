@@ -1,7 +1,7 @@
 import { Module } 	from 'cerebral';
 import signals from './sequences';
 import oada	from '@oada/cerebral-provider';
-import StorageModule from '@cerebral/storage'
+/*import StorageModule from '@cerebral/storage'
 const storage = StorageModule({
 
   target: localStorage,
@@ -10,20 +10,16 @@ const storage = StorageModule({
     'connections': 'connections'
   }
 
-})
+})*/
 
 export default Module ({
 
-  state: {
-    connections: {},
-  },
+  state: { connections: {} },
 
-	providers: {
-		oada
-  },
+	providers: { oada },
 
   signals,
 
-  modules: {storage}
+  //  modules: {storage}
 
 })
