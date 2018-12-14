@@ -1,6 +1,6 @@
 {
   "name": "@oada/cerebral-module",
-  "version": "2.0.10",
+  "version": "2.1.0",
   "description": "oada cerebral module",
   "main": "./index.js",
   "scripts": {
