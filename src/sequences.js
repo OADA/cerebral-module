@@ -18,41 +18,39 @@ function domainToConnectionId(domainUrl) {
  */
 const connect = sequence('oada.connect', [
   ({state, oada, path, props}) => {
-        return oada.connect({
-            connection_id: domainToConnectionId(props.domain),
-            domain:      props.domain,
-            options:     props.options,
-            cache:       props.cache,
-            token:       props.token,
-            noWebsocket: props.noWebsocket,
-        })
-        .then( (response) => {
-            return path.authorized({
-              token: response.token,
-              connection: response,
-              connection_id: domainToConnectionId(props.domain)
-            });
-            //return result;
-        }).catch( (err) => {
-            error(err)
-            return path.unauthorized({});
-        })
-    },
-    {
-        authorized: sequence('oada.authorized', [
-            set(state`oada.connections.${props`connection_id`}.token`, props`token`),
-            set(state`oada.connections.${props`connection_id`}.domain`, props`domain`),
-            when(state`oada.${props`connection_id`}.bookmarks`), {
-              true: [],
-              false: [
-                set(state`oada.${props`connection_id`}.bookmarks`, {}),
-              ]
-            }
-        ]),
-        unauthorized: sequence('oada.unauthorized', [
-            set(state`error`, {})
-        ]),
-    }
+    return oada.connect({
+      connection_id: domainToConnectionId(props.domain),
+      domain:      props.domain,
+      options:     props.options,
+      cache:       props.cache,
+      token:       props.token,
+      websocket: props.websocket,
+    }).then( (response) => {
+      return path.authorized({
+        token: response.token,
+        connection: response,
+        connection_id: domainToConnectionId(props.domain)
+      });
+    //return result;
+    }).catch( (err) => {
+      error(err)
+      return path.unauthorized({});
+    })
+  }, {
+    authorized: sequence('oada.authorized', [
+      set(state`oada.connections.${props`connection_id`}.token`, props`token`),
+      set(state`oada.connections.${props`connection_id`}.domain`, props`domain`),
+      when(state`oada.${props`connection_id`}.bookmarks`), {
+        true: [],
+        false: [
+          set(state`oada.${props`connection_id`}.bookmarks`, {}),
+        ]
+      }
+    ]),
+    unauthorized: sequence('oada.unauthorized', [
+      set(state`error`, {})
+    ]),
+  },
 ]);
 
 const handleWatch = sequence('oada.handleWatch', [
@@ -79,7 +77,8 @@ const handleWatch = sequence('oada.handleWatch', [
  */
 const get = sequence('oada.get', [
   ({oada, state, props}) => {
-    return Promise.map(props.requests || [props], (request) => {
+    return Promise.map(props.requests || [], (request, i) => {
+      if (request.complete) return
       let _cerebralPath = request.path.replace(/^\//, '').split('/').join('.')
       if (request.watch) {
         let conn = state.get(`oada.${request.connection_id || props.connection_id}`);
@@ -104,6 +103,7 @@ const get = sequence('oada.get', [
         if (request.watch) {
           state.set(`oada.${request.connection_id || props.connection_id}.watches.${request.path}`, true) 
         }
+        props.set(`requests.${i}`, {complete: true})
         return response;
       }).catch((err) => {
         error(err);
@@ -112,7 +112,7 @@ const get = sequence('oada.get', [
     }).then((responses) => {
       return {responses}
     })
-  }// oada state props
+  },// oada state props
 ]);
 
 /**
@@ -121,7 +121,8 @@ const get = sequence('oada.get', [
  */
 const put = sequence('oada.put', [
   ({oada, state, props}) => {
-    return Promise.map(props.requests || [props], (request)=>{
+    return Promise.map(props.requests || [], (request, i)=>{
+      if (request.complete) return
       return oada.put({
         url: request.url, //props.domain + ((request.path[0] === '/') ? '':'/') + request.path,
         path: request.path,
@@ -134,13 +135,13 @@ const put = sequence('oada.put', [
         var oldState = _.cloneDeep(state.get(`oada.${request.connection_id || props.connection_id}${request.path.split('/').join('.')}`));;
         var newState = _.merge(oldState, request.data);
         state.set(`oada.${request.connection_id || props.connection_id}${request.path.split('/').join('.')}`, newState);
+        props.set(`requests.${i}`, {complete: true})
         return response;
       })
     }).then((responses) => {
       return {responses}
     });
   },
-    //    get
 ]);
 
 /**
@@ -149,7 +150,8 @@ const put = sequence('oada.put', [
  */
 const oadaDelete = sequence('oada.delete', [
   ({oada, state, props}) => {
-      return Promise.map(props.requests || [props], (request) => {
+    return Promise.map(props.requests || [], (request, i) => {
+      if (request.complete) return
         let _cerebralPath = request.path.replace(/^\//, '').split('/').join('.')
         let conn = state.get(`oada.${request.connection_id || props.connection_id}`);
         if (request.unwatch && conn && conn.watches) {
@@ -170,6 +172,7 @@ const oadaDelete = sequence('oada.delete', [
           } else {
             state.unset(`oada.${request.connection_id || props.connection_id}.${_cerebralPath}`);
           }
+          props.set(`requests.${i}`, {complete: true});
           return response
         })
       }).then((responses) => {
@@ -205,28 +208,29 @@ const disconnect = sequence('oada.disconnect', [
  * @type {Primitive}
  */
 const post = sequence('oada.post', [
-    ({oada, state, props}) => {
-        return Promise.map(props.requests || [props], (request)=>{
-            return oada.post({
-                url: request.url, //props.domain + ((request.path[0] === '/') ? '':'/') + request.path,
-                path: request.path,
-                data: request.data,
-                type: request.type || props.type,
-                headers: request.headers || props.headers,
-                tree: request.tree || props.tree,
-                connection_id: request.connection_id || props.connection_id
-            }).then((response) => {
-              var id = response.headers.location;
-              var oldState = _.cloneDeep(state.get(`oada.${request.connection_id || props.connection_id}${request.path.split('/').join('.')}`));;
-              var newState = _.merge(oldState, request.data);
-              state.set(`oada.${request.connection_id || props.connection_id}.${request.path.split('/').join('.')}`, newState);
-              return
-            })
-        }).then((responses) => {
-          return {responses}
-        });
-    },
-    //    get
+  ({oada, state, props}) => {
+    return Promise.map(props.requests || [], (request, i) => {
+      if (request.complete) return
+      return oada.post({
+        url: request.url, //props.domain + ((request.path[0] === '/') ? '':'/') + request.path,
+        path: request.path,
+        data: request.data,
+        type: request.type || props.type,
+        headers: request.headers || props.headers,
+        tree: request.tree || props.tree,
+        connection_id: request.connection_id || props.connection_id
+      }).then((response) => {
+        var id = response.headers.location;
+        var oldState = _.cloneDeep(state.get(`oada.${request.connection_id || props.connection_id}${request.path.split('/').join('.')}`));;
+        var newState = _.merge(oldState, request.data);
+        state.set(`oada.${request.connection_id || props.connection_id}.${request.path.split('/').join('.')}`, newState);
+        props.set(`requests.${i}`, {complete: true});
+        return
+      })
+    }).then((responses) => {
+      return {responses}
+    });
+  },
 ]);
 
 export default {
