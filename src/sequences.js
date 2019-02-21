@@ -1,11 +1,9 @@
 import { props, state } from 'cerebral/tags';
-import debug from 'debug';
 import { when, merge, unset, equals, set } from 'cerebral/operators';
 import { sequence } from 'cerebral';
 import Promise from 'bluebird';
 import url from 'url'
-Promise.config({warnings: false})                                                
-var error = require('debug')('cerebral-module:error')
+//Promise.config({warnings: false})                                                
 
 function domainToConnectionId(domainUrl) {
   let domain = url.parse(domainUrl).hostname;
@@ -33,7 +31,6 @@ const connect = sequence('oada.connect', [
       });
     //return result;
     }).catch( (err) => {
-      error(err)
       return path.unauthorized({});
     })
   }, {
@@ -81,7 +78,8 @@ const handleWatch = sequence('oada.handleWatch', [
 const get = sequence('oada.get', [
   ({oada, state, props}) => {
     if (!props.requests) throw new Error('Passing request parameters as top level keys of cerebral props has been deprecated. Instead, pass requests in as an array of request objects under the requests key')
-    return Promise.map(props.requests || [], (request, i) => {
+    var requests = props.requests || [];
+    return Promise.map(requests, (request, i) => {
       if (request.complete) return
       let _cerebralPath = request.path.replace(/^\//, '').split('/').join('.')
       if (request.watch) {
@@ -107,14 +105,13 @@ const get = sequence('oada.get', [
         if (request.watch) {
           state.set(`oada.${request.connection_id || props.connection_id}.watches.${request.path}`, true) 
         }
-        props.set(`requests.${i}`, {complete: true})
+        requests[i].complete = true;
         return response;
       }).catch((err) => {
-        error(err);
         return err;
       })
     }).then((responses) => {
-      return {responses}
+      return {responses, requests}
     })
   },// oada state props
 ]);
@@ -126,7 +123,8 @@ const get = sequence('oada.get', [
 const put = sequence('oada.put', [
   ({oada, state, props}) => {
     if (!props.requests) throw new Error('Passing request parameters as top level keys of cerebral props has been deprecated. Instead, pass requests in as an array of request objects under the requests key')
-    return Promise.map(props.requests || [], (request, i)=>{
+    var requests = props.requests || [];
+    return Promise.map(requests, (request, i)=>{
       if (request.complete) return
       return oada.put({
         url: request.url, //props.domain + ((request.path[0] === '/') ? '':'/') + request.path,
@@ -140,11 +138,11 @@ const put = sequence('oada.put', [
         var oldState = _.cloneDeep(state.get(`oada.${request.connection_id || props.connection_id}${request.path.split('/').join('.')}`));;
         var newState = _.merge(oldState, request.data);
         state.set(`oada.${request.connection_id || props.connection_id}${request.path.split('/').join('.')}`, newState);
-        props.set(`requests.${i}`, {complete: true})
+        requests[i].complete = true;
         return response;
       })
     }).then((responses) => {
-      return {responses}
+      return {responses, requests}
     });
   },
 ]);
@@ -156,7 +154,8 @@ const put = sequence('oada.put', [
 const oadaDelete = sequence('oada.delete', [
   ({oada, state, props}) => {
     if (!props.requests) throw new Error('Passing request parameters as top level keys of cerebral props has been deprecated. Instead, pass requests in as an array of request objects under the requests key')
-    return Promise.map(props.requests || [], (request, i) => {
+    var requests = props.requests || [];
+    return Promise.map(requests, (request, i) => {
       if (request.complete) return
       let _cerebralPath = request.path.replace(/^\//, '').split('/').join('.')
       let conn = state.get(`oada.${request.connection_id || props.connection_id}`);
@@ -179,11 +178,11 @@ const oadaDelete = sequence('oada.delete', [
         } else {
           state.unset(`oada.${request.connection_id || props.connection_id}.${_cerebralPath}`);
         }
-        props.set(`requests.${i}`, {complete: true});
+        requests[i].complete = true;
         return response
       })
     }).then((responses) => {
-      return {responses};
+      return {responses, requests};
     })
   },
 ]);
@@ -217,7 +216,8 @@ const disconnect = sequence('oada.disconnect', [
 const post = sequence('oada.post', [
   ({oada, state, props}) => {
     if (!props.requests) throw new Error('Passing request parameters as top level keys of cerebral props has been deprecated. Instead, pass requests in as an array of request objects under the requests key')
-    return Promise.map(props.requests || [], (request, i) => {
+    var requests = props.requests || [];
+    return Promise.map(requests, (request, i) => {
       if (request.complete) return
       return oada.post({
         url: request.url, //props.domain + ((request.path[0] === '/') ? '':'/') + request.path,
@@ -232,7 +232,7 @@ const post = sequence('oada.post', [
         var oldState = _.cloneDeep(state.get(`oada.${request.connection_id || props.connection_id}${request.path.split('/').join('.')}`));;
         var newState = _.merge(oldState, request.data);
         state.set(`oada.${request.connection_id || props.connection_id}.${request.path.split('/').join('.')}`, newState);
-        props.set(`requests.${i}`, {complete: true});
+        requests[i].complete = true;
         return
       })
     }).then((responses) => {
