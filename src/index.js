@@ -1,4 +1,4 @@
-import signals from './sequences';
+import sequences from './sequences';
 import oada	from '@oada/cerebral-provider';
 
 export default {
@@ -7,6 +7,6 @@ export default {
 
 	providers: { oada },
 
-  signals
+  sequences
 
 }

@@ -1,9 +1,9 @@
-import { props, state } from 'cerebral/tags';
-import { when, merge, unset, equals, set } from 'cerebral/operators';
-import { sequence } from 'cerebral';
+import { props, state } from 'cerebral';
+import { sequence, when, merge, unset, equals, set } from 'cerebral/factories'
+
 import Promise from 'bluebird';
 import url from 'url'
-//Promise.config({warnings: false})                                                
+//Promise.config({warnings: false})
 
 function domainToConnectionId(domainUrl) {
   let domain = url.parse(domainUrl).hostname;
@@ -43,6 +43,7 @@ const connect = sequence('oada.connect', [
           set(state`oada.${props`connection_id`}.bookmarks`, {}),
         ]
       }
+
     ]),
     unauthorized: sequence('oada.unauthorized', [
       set(state`error`, {})
@@ -103,7 +104,7 @@ const get = sequence('oada.get', [
         let _responseData = response.data;
         if (_responseData) state.set(`oada.${request.connection_id || props.connection_id}.${_cerebralPath}`, _responseData);
         if (request.watch) {
-          state.set(`oada.${request.connection_id || props.connection_id}.watches.${request.path}`, true) 
+          state.set(`oada.${request.connection_id || props.connection_id}.watches.${request.path}`, true)
         }
         requests[i].complete = true;
         return response;

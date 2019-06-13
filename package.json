@@ -13,7 +13,6 @@
   "author": "oada",
   "license": "Apache-2.0",
   "dependencies": {
-    "@cerebral/storage": "^4.2.2",
     "@oada/cerebral-provider": "^2.1.0",
     "assert": "^1.4.1",
     "babel-polyfill": "^6.26.0",
@@ -21,7 +20,7 @@
     "babel-preset-latest": "^6.24.1",
     "babel-preset-stage-3": "^6.24.1",
     "babel-register": "^6.26.0",
-    "cerebral": "^4.2.2",
+    "cerebral": "^5.1.1",
     "chai": "^4.1.2",
     "debug": "^4.1.0",
     "fs": "^0.0.1-security",
