@@ -14,7 +14,7 @@ function domainToConnectionId(domainUrl) {
  * connects to the oada, returns and object with get, put, post, resetCache, disconnect
  * @type {Primitive}
  */
-const connect = sequence('oada.connect', [
+const connect = [
   ({state, oada, path, props}) => {
     return oada.connect({
       connection_id: domainToConnectionId(props.domain),
@@ -42,14 +42,15 @@ const connect = sequence('oada.connect', [
         if (wh) {
           state.set(`oada.${props.connection_id}.bookmarks`, {});
         }
+      }
     ]),
     unauthorized: sequence('oada.unauthorized', [
       ({state}) => {state.set(`error`, {})}
     ]),
   },
-]);
+];
 
-const handleWatch = sequence('oada.handleWatch', [
+const handleWatch = [
   ({state, oada, path, props}) => {
     if (props.response.change.type === 'merge') {
       var oldState = _.cloneDeep(state.get(`oada.${props.connection_id}.${props.path}`));;
@@ -63,13 +64,13 @@ const handleWatch = sequence('oada.handleWatch', [
       return {oldState}
     }
   }
-])
+]
 
 /**
  * using the connection_id provided, it GET requests to the server
  * @type {Primitive}
  */
-const get = sequence('oada.get', [
+const get = [
   ({oada, state, props}) => {
     if (!props.requests) throw new Error('Passing request parameters as top level keys of cerebral props has been deprecated. Instead, pass requests in as an array of request objects under the requests key')
     var requests = props.requests || [];
@@ -108,13 +109,13 @@ const get = sequence('oada.get', [
       return {responses, requests}
     })
   },// oada state props
-]);
+]
 
 /**
  * it PUT requests the resource to the server
  * @type {Primitive}
  */
-const put = sequence('oada.put', [
+const put = [
   ({oada, state, props}) => {
     if (!props.requests) throw new Error('Passing request parameters as top level keys of cerebral props has been deprecated. Instead, pass requests in as an array of request objects under the requests key')
     var requests = props.requests || [];
@@ -139,13 +140,13 @@ const put = sequence('oada.put', [
       return {responses, requests}
     });
   },
-]);
+]
 
 /**
  * requests a DELETE operation to the server. We utilize the connection_id to know which connection to use
  * @type {Primitive}
  */
-const oadaDelete = sequence('oada.delete', [
+const oadaDelete = [
   ({oada, state, props}) => {
     if (!props.requests) throw new Error('Passing request parameters as top level keys of cerebral props has been deprecated. Instead, pass requests in as an array of request objects under the requests key')
     var requests = props.requests || [];
@@ -179,35 +180,35 @@ const oadaDelete = sequence('oada.delete', [
       return {responses, requests};
     })
   },
-]);
+]
 
 /**
  * resets or clears the cache
  * @type {Primitive}
  */
-const resetCache = sequence('oada.resetCache', [
+const resetCache = [
     ({oada, state, props}) => {
       return oada.resetCache({
         connection_id: props.connection_id || domainToConnectionId(props.domain),
       });
     }
-]);
+]
 
 /**
  * disconnects from the framework
  * @type {Primitive}
  */
-const disconnect = sequence('oada.disconnect', [
+const disconnect = [
     ({oada, state, props}) => {
         return oada.disconnect({connection_id: props.connection_id});
     }
-]);
+]
 
 /**
  * it POST requests the resource to the server
  * @type {Primitive}
  */
-const post = sequence('oada.post', [
+const post = [
   ({oada, state, props}) => {
     if (!props.requests) throw new Error('Passing request parameters as top level keys of cerebral props has been deprecated. Instead, pass requests in as an array of request objects under the requests key')
     var requests = props.requests || [];
@@ -233,7 +234,7 @@ const post = sequence('oada.post', [
       return {responses}
     });
   },
-]);
+]
 
 export default {
   delete: oadaDelete,
