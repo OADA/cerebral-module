@@ -35,40 +35,33 @@ const connect = sequence('oada.connect', [
     })
   }, {
     authorized: sequence('oada.authorized', [
-      set(state`oada.connections.${props`connection_id`}.token`, props`token`),
-      set(state`oada.connections.${props`connection_id`}.domain`, props`domain`),
-      when(state`oada.${props`connection_id`}.bookmarks`), {
-        true: [],
-        false: [
-          set(state`oada.${props`connection_id`}.bookmarks`, {}),
-        ]
-      }
-
+      ({state, oada, props}) => {
+        state.set(`oada.connections.${props.connection_id}.token`, props.token);
+        state.set(`oada.connections.${props.connection_id}.domain`, props.domain);
+        var wh = state.get(`oada.${props.connection_id}.bookmarks`)
+        if (wh) {
+          state.set(`oada.${props.connection_id}.bookmarks`, {});
+        }
     ]),
     unauthorized: sequence('oada.unauthorized', [
-      set(state`error`, {})
+      ({state}) => {state.set(`error`, {})}
     ]),
   },
 ]);
 
 const handleWatch = sequence('oada.handleWatch', [
-  equals(props`response.change.type`), {
-    'merge': [
-      ({state, props}) => {
-        var oldState = _.cloneDeep(state.get(`oada.${props.connection_id}.${props.path}`));;
-        var newState = _.merge(oldState, props.response.change.body);
-        state.set(`oada.${props.connection_id}.${props.path}`, newState);
-        return {oldState}
-      },
-    ],
-    'delete': [
-      ({state, props}) => {
-        var nullPath = props.nullPath.split('/').join('.');
-        var oldState = _.cloneDeep(state.get(`oada.${props.connection_id}${nullPath}`));;
-        state.unset(`oada.${props.connection_id}.${props.path}${nullPath}`);
-        return {oldState}
-      }
-    ]
+  ({state, oada, path, props}) => {
+    if (props.response.change.type === 'merge') {
+      var oldState = _.cloneDeep(state.get(`oada.${props.connection_id}.${props.path}`));;
+      var newState = _.merge(oldState, props.response.change.body);
+      state.set(`oada.${props.connection_id}.${props.path}`, newState);
+      return {oldState}
+    } else if (props.response.change.type === 'delete') {
+      var nullPath = props.nullPath.split('/').join('.');
+      var oldState = _.cloneDeep(state.get(`oada.${props.connection_id}${nullPath}`));;
+      state.unset(`oada.${props.connection_id}.${props.path}${nullPath}`);
+      return {oldState}
+    }
   }
 ])
 
