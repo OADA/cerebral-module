@@ -1,5 +1,5 @@
-import { props, state } from 'cerebral';
-import { sequence, when, merge, unset, equals, set } from 'cerebral/factories'
+import { state } from 'cerebral';
+import { when, merge, unset, equals, set } from 'cerebral/factories'
 
 import Promise from 'bluebird';
 import url from 'url'
@@ -17,7 +17,7 @@ function domainToConnectionId(domainUrl) {
 const connect = [
   ({state, oada, path, props}) => {
     return oada.connect({
-      connection_id: domainToConnectionId(props.domain),
+      connection_id: (props.connection_id || domainToConnectionId(props.domain)),
       domain:      props.domain,
       options:     props.options,
       cache:       props.cache,
@@ -27,15 +27,18 @@ const connect = [
       return path.authorized({
         token: response.token,
         connection: response,
-        connection_id: domainToConnectionId(props.domain)
+        connection_id: (props.connection_id || domainToConnectionId(props.domain))
       });
     //return result;
     }).catch( (err) => {
       return path.unauthorized({});
     })
   }, {
-    authorized: sequence('oada.authorized', [
+    authorized: [
       ({state, oada, props}) => {
+        if (state.get(`oada.connections.${props.connection_id}`) == null) {
+          state.set(`oada.connections.${props.connection_id}`, {});
+        }
         state.set(`oada.connections.${props.connection_id}.token`, props.token);
         state.set(`oada.connections.${props.connection_id}.domain`, props.domain);
         var wh = state.get(`oada.${props.connection_id}.bookmarks`)
@@ -43,10 +46,10 @@ const connect = [
           state.set(`oada.${props.connection_id}.bookmarks`, {});
         }
       }
-    ]),
-    unauthorized: sequence('oada.unauthorized', [
+    ],
+    unauthorized: [
       ({state}) => {state.set(`error`, {})}
-    ]),
+    ],
   },
 ];
 
