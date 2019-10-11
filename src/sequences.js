@@ -15,7 +15,7 @@ function domainToConnectionId(domainUrl) {
  * @type {Primitive}
  */
 const connect = [
-  ({state, oada, path, props}) => {
+  ({oada, path, props}) => {
     return oada.connect({
       connection_id: (props.connection_id || domainToConnectionId(props.domain)),
       domain:      props.domain,
@@ -35,20 +35,20 @@ const connect = [
     })
   }, {
     authorized: [
-      ({state, oada, props}) => {
-        if (state.get(`oada.connections.${props.connection_id}`) == null) {
-          state.set(`oada.connections.${props.connection_id}`, {});
+      ({store, get, oada, props}) => {
+        if (get(state`oada.connections.${props.connection_id}`) == null) {
+          store.set(state`oada.connections.${props.connection_id}`, {});
         }
-        state.set(`oada.connections.${props.connection_id}.token`, props.token);
-        state.set(`oada.connections.${props.connection_id}.domain`, props.domain);
-        var wh = state.get(`oada.${props.connection_id}.bookmarks`)
+        store.set(state`oada.connections.${props.connection_id}.token`, props.token);
+        store.set(state`oada.connections.${props.connection_id}.domain`, props.domain);
+        var wh = get(state`oada.${props.connection_id}.bookmarks`)
         if (wh) {
-          state.set(`oada.${props.connection_id}.bookmarks`, {});
+          store.set(state`oada.${props.connection_id}.bookmarks`, {});
         }
       }
     ],
     unauthorized: [
-      ({state}) => {state.set(`error`, {})}
+      ({store}) => {store.set(state`oada.error`, {})}
     ],
   },
 ];
@@ -74,14 +74,14 @@ const handleWatch = [
  * @type {Primitive}
  */
 const get = [
-  ({oada, state, props}) => {
+  ({oada, store, get, props}) => {
     if (!props.requests) throw new Error('Passing request parameters as top level keys of cerebral props has been deprecated. Instead, pass requests in as an array of request objects under the requests key')
     var requests = props.requests || [];
     return Promise.map(requests, (request, i) => {
       if (request.complete) return
       let _cerebralPath = request.path.replace(/^\//, '').split('/').join('.')
       if (request.watch) {
-        let conn = state.get(`oada.${request.connection_id || props.connection_id}`);
+        let conn = get(state`oada.${request.connection_id || props.connection_id}`);
         if (conn) {
           if (conn && conn.watches && conn.watches[request.path]) return
           request.watch.signals = ['oada.handleWatch', ...request.watch.signals];
@@ -99,13 +99,27 @@ const get = [
         tree: request.tree || props.tree,
       }).then((response) => {
         let _responseData = response.data;
-        if (_responseData) state.set(`oada.${request.connection_id || props.connection_id}.${_cerebralPath}`, _responseData);
+        //Build out path one object at a time.
+        var path = `oada.${request.connection_id || props.connection_id}.${_cerebralPath}`;
+        var parts = path.split('.');
+        var partialPath = '';
+        parts.forEach((part) => {
+          partialPath = partialPath + part;
+          if (get(state`${partialPath}`) == null) {
+            store.set(state`${partialPath}`, {});
+          }
+          partialPath = partialPath + '.';
+        })
+        //Set response
+        if (_responseData) store.set(state`${path}`, _responseData);
         if (request.watch) {
-          state.set(`oada.${request.connection_id || props.connection_id}.watches.${request.path}`, true)
+          //TODO build path part by part
+          store.set(state`oada.${request.connection_id || props.connection_id}.watches.${request.path}`, true)
         }
         requests[i].complete = true;
         return response;
       }).catch((err) => {
+        console.log('Error in oada.get', err);
         return err;
       })
     }).then((responses) => {
@@ -124,6 +138,7 @@ const put = [
     var requests = props.requests || [];
     return Promise.map(requests, (request, i)=>{
       if (request.complete) return
+      console.log('request', request)
       return oada.put({
         url: request.url, //props.domain + ((request.path[0] === '/') ? '':'/') + request.path,
         path: request.path,
@@ -135,7 +150,18 @@ const put = [
       }).then((response) => {
         var oldState = _.cloneDeep(state.get(`oada.${request.connection_id || props.connection_id}${request.path.split('/').join('.')}`));;
         var newState = _.merge(oldState, request.data);
-        state.set(`oada.${request.connection_id || props.connection_id}${request.path.split('/').join('.')}`, newState);
+        //Build out path one object at a time.
+        var path = `oada.${request.connection_id || props.connection_id}${request.path.split('/').join('.')}`;
+        var parts = path.split('.');
+        var partialPath = '';
+        parts.forEach((part) => {
+          partialPath = partialPath + part;
+          if (state.get(partialPath) == null) {
+            state.set(partialPath, {});
+          }
+          partialPath = partialPath + '.';
+        })
+        state.set(path, newState);
         requests[i].complete = true;
         return response;
       })
