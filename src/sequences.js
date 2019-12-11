@@ -57,7 +57,7 @@ const handleWatch = [
   ({state, oada, path, props}) => {
     if (props.response.change.type === 'merge') {
       var oldState = _.cloneDeep(state.get(`oada.${props.connection_id}.${props.path}`));;
-      var newState = _.merge(oldState, props.response.change.body);
+      var newState = _.merge(oldState, props.response.change.body.data);
       state.set(`oada.${props.connection_id}.${props.path}`, newState);
       return {oldState}
     } else if (props.response.change.type === 'delete') {
