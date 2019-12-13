@@ -82,7 +82,7 @@ const get = [
       let _cerebralPath = request.path.replace(/^\//, '').split('/').join('.')
       if (request.watch) {
         let conn = get(state`oada.${request.connection_id || props.connection_id}`);
-        if (conn) {
+        if (!conn) {
           if (conn && conn.watches && conn.watches[request.path]) return
           request.watch.signals = ['oada.handleWatch', ...request.watch.signals];
           request.watch.payload = request.watch.payload || {};
@@ -114,7 +114,18 @@ const get = [
         if (_responseData) store.set(state`${path}`, _responseData);
         if (request.watch) {
           //TODO build path part by part
-          store.set(state`oada.${request.connection_id || props.connection_id}.watches.${request.path}`, true)
+          path = `oada.${request.connection_id || props.connection_id}.watches.${request.path}`;
+          parts = path.split('.');
+          partialPath = '';
+          parts.forEach((part) => {
+            partialPath = partialPath + part;
+            if (get(state`${partialPath}`) == null) {
+              store.set(state`${partialPath}`, {});
+            }
+            partialPath = partialPath + '.';
+          })
+          store.set(state`${path}`, true)
+          //store.set(state`oada.${request.connection_id || props.connection_id}.watches.${request.path}`, true)
         }
         requests[i].complete = true;
         return response;
@@ -138,7 +149,6 @@ const put = [
     var requests = props.requests || [];
     return Promise.map(requests, (request, i)=>{
       if (request.complete) return
-      console.log('request', request)
       return oada.put({
         url: request.url, //props.domain + ((request.path[0] === '/') ? '':'/') + request.path,
         path: request.path,
