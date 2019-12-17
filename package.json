@@ -13,7 +13,7 @@
   "author": "oada",
   "license": "Apache-2.0",
   "dependencies": {
-    "@oada/cerebral-provider": "^3.0.3",
+    "@oada/cerebral-provider": "^3.0.4",
     "assert": "^1.4.1",
     "babel-polyfill": "^6.26.0",
     "babel-preset-env": "^1.7.0",
