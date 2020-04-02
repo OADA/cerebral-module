@@ -105,8 +105,7 @@ const get = [
         let conn = get(
           state`oada.${request.connection_id || props.connection_id}`
         );
-        if (!conn) {
-          if (conn && conn.watches && conn.watches[request.path]) return;
+        if (conn && !(conn.watches && conn.watches[request.path])) {
           request.watch.signals = [
             "oada.handleWatch",
             ...request.watch.signals,
