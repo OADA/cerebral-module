@@ -74,20 +74,39 @@ const connect = [
 
 const handleWatch = [
   ({ state, oada, path, props }) => {
-    if (props.response.change.type === "merge") {
-      var oldState = _.cloneDeep(
-        state.get(`oada.${props.connection_id}.${props.path}`)
-      );
-      var newState = _.merge(oldState, props.response.change.body.data);
+    // get local state
+    const rootCerebralPath = `oada.${props.connection_id}.${props.path}`;
+    const oldState = _.cloneDeep(state.get(rootCerebralPath));
+
+    if (Array.isArray(props.response.change)) {
+      // process array-based change feed
+      var oldState = _.cloneDeep(state.get(rootCerebralPath));
+      var newState = _.cloneDeep(state.get(rootCerebralPath)); // TODO: better way to do this?
+      var newState = {};
+      props.response.change.forEach((item) => {
+        // construct
+        var changeRelativePath = item.path.split("/").join(".");
+        newState = _.merge(newState, item.body);
+      });
       state.set(`oada.${props.connection_id}.${props.path}`, newState);
       return { oldState };
-    } else if (props.response.change.type === "delete") {
-      var nullPath = props.nullPath.split("/").join(".");
-      var oldState = _.cloneDeep(
-        state.get(`oada.${props.connection_id}${nullPath}`)
-      );
-      state.unset(`oada.${props.connection_id}.${props.path}${nullPath}`);
-      return { oldState };
+    } else {
+      // process tree-based change feed
+      if (props.response.change.type === "merge") {
+        var oldState = _.cloneDeep(
+          state.get(`oada.${props.connection_id}.${props.path}`)
+        );
+        var newState = _.merge(oldState, props.response.change.body.data);
+        state.set(`oada.${props.connection_id}.${props.path}`, newState);
+        return { oldState };
+      } else if (props.response.change.type === "delete") {
+        var nullPath = props.nullPath.split("/").join(".");
+        var oldState = _.cloneDeep(
+          state.get(`oada.${props.connection_id}${nullPath}`)
+        );
+        state.unset(`oada.${props.connection_id}.${props.path}${nullPath}`);
+        return { oldState };
+      }
     }
   },
 ];
