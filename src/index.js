@@ -1,12 +1,10 @@
-import sequences from './sequences';
-import oada	from '@oada/cerebral-provider';
+import sequences from "./sequences";
+import oada from "@oada/cerebral-provider";
 
 export default {
-
   state: { connections: {} },
 
-	providers: { oada },
+  providers: { oada },
 
-  sequences
-
-}
+  sequences,
+};
