@@ -1,36 +1,37 @@
 {
   "name": "@oada/cerebral-module",
-  "version": "3.0.5",
+  "version": "3.0.6",
   "description": "oada cerebral module",
   "main": "./index.js",
   "scripts": {
-    "test": "mocha -w --require babel-polyfill --compilers js:babel-register test/**/*.test.js",
-    "build": "babel src --out-dir ./ --presets=env",
+    "test": "mocha -w --require @babel/register test/**/*.test.js",
+    "build": "babel src --out-dir ./",
     "prepare": "npm run build",
     "prettier": "prettier --write 'src/**/*.js'",
-    "build-watch": "babel --watch src --out-dir ./ --presets=env",
+    "build-watch": "babel --watch src --out-dir ./",
     "dev": "cpx \"*.js\" $APP_DIR/node_modules/@oada/cerebral-module/ --watch --verbose"
   },
   "author": "oada",
   "license": "Apache-2.0",
   "dependencies": {
-    "@oada/cerebral-provider": "^3.0.4",
-    "assert": "^1.4.1",
-    "babel-polyfill": "^6.26.0",
-    "babel-preset-env": "^1.7.0",
-    "babel-preset-latest": "^6.24.1",
-    "babel-preset-stage-3": "^6.24.1",
-    "babel-register": "^6.26.0",
-    "chai": "^4.1.2",
+    "@oada/cerebral-provider": "^3.0.6",
     "debug": "^4.1.0",
     "fs": "^0.0.1-security",
+    "lodash": "^4.17.15",
     "url": "^0.11.0"
   },
   "peerDependencies": {
     "cerebral": "^5.1.1"
   },
   "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "prettier": "2.0.2"
+    "@babel/cli": "^7.8.4",
+    "@babel/core": "^7.9.0",
+    "@babel/preset-env": "^7.9.5",
+    "@babel/register": "^7.9.0",
+    "cerebral": "^5.1.1",
+    "mocha": "^7.1.1",
+    "prettier": "2.0.2",
+    "chai": "^4.1.2",
+    "assert": "^1.4.1"
   }
 }
