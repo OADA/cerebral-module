@@ -1,4 +1,4 @@
 node_modules
-index.js
-sequences.js
-state.js
+/index.js
+/sequences.js
+/state.js
