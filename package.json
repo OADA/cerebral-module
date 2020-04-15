@@ -1,11 +1,11 @@
 {
   "name": "@oada/cerebral-module",
-  "version": "3.0.6",
-  "description": "oada cerebral module",
-  "main": "./index.js",
+  "version": "4.0.0",
+  "description": "OADA cerebral module",
+  "main": "./build/index.js",
   "scripts": {
     "test": "mocha -w --require @babel/register test/**/*.test.js",
-    "build": "babel src --out-dir ./",
+    "build": "babel src --out-dir build",
     "prepare": "npm run build",
     "prettier": "prettier --write 'src/**/*.js'",
     "build-watch": "babel --watch src --out-dir ./",
@@ -14,21 +14,21 @@
   "author": "oada",
   "license": "Apache-2.0",
   "dependencies": {
-    "@oada/cerebral-provider": "^3.0.6",
     "debug": "^4.1.0",
     "fs": "^0.0.1-security",
     "lodash": "^4.17.15",
-    "url": "^0.11.0"
+    "url": "^0.11.0",
+    "uuid": "^7.0.3"
   },
   "peerDependencies": {
-    "cerebral": "^5.1.1"
+    "cerebral": "^5.2.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.8.4",
     "@babel/core": "^7.9.0",
     "@babel/preset-env": "^7.9.5",
     "@babel/register": "^7.9.0",
-    "cerebral": "^5.1.1",
+    "cerebral": "^5.2.1",
     "mocha": "^7.1.1",
     "prettier": "2.0.2",
     "chai": "^4.1.2",
