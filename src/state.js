@@ -1,3 +1,3 @@
 export default {
-   oada: {}
-}
+  connections: {},
+};
