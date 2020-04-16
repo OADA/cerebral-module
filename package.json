@@ -2,6 +2,7 @@
   "name": "@oada/cerebral-module",
   "version": "4.0.0",
   "description": "OADA cerebral module",
+  "repository": "github:OADA/cerebral-module",
   "main": "./build/index.js",
   "scripts": {
     "test": "mocha -w --require @babel/register test/**/*.test.js",
