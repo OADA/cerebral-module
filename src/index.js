@@ -7,5 +7,5 @@ export default {
 
   providers: { oada },
 
-  sequences
+  sequences,
 };

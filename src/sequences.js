@@ -37,7 +37,7 @@ const connect = [
         //return result;
       })
       .catch((err) => {
-        return path.unauthorized({err});
+        return path.unauthorized({ err });
       });
   },
   {
@@ -58,15 +58,21 @@ const connect = [
         if (wh) {
           store.set(state`oada.${props.connection_id}.bookmarks`, {});
         }
-        store.set(state`oada.connections.${props.connection_id}.connected`, true);
-        return {token: props.token, connection_id: props.connection_id}
+        store.set(
+          state`oada.connections.${props.connection_id}.connected`,
+          true
+        );
+        return { token: props.token, connection_id: props.connection_id };
       },
     ],
     unauthorized: [
       ({ store, props }) => {
-        store.set(state`oada.connections.${props.connection_id}.connected`, false);
-        store.set(state`oada.error`, {error: props.err.message});
-        return {error: props.err, connection_id: props.connection_id}
+        store.set(
+          state`oada.connections.${props.connection_id}.connected`,
+          false
+        );
+        store.set(state`oada.error`, { error: props.err.message });
+        return { error: props.err, connection_id: props.connection_id };
       },
     ],
   },
@@ -103,7 +109,7 @@ const get = [
         "Passing request parameters as top level keys of cerebral props has been deprecated. Instead, pass requests in as an array of request objects under the requests key"
       );
     var requests = props.requests || [];
-    const PromiseMap = (props.concurrent) ? Promise.map : Promise.mapSeries;
+    const PromiseMap = props.concurrent ? Promise.map : Promise.mapSeries;
     return PromiseMap(requests, (request, i) => {
       if (request.complete) return;
       let _cerebralPath = request.path.replace(/^\//, "").split("/").join(".");
@@ -190,7 +196,7 @@ const put = [
         "Passing request parameters as top level keys of cerebral props has been deprecated. Instead, pass requests in as an array of request objects under the requests key"
       );
     var requests = props.requests || [];
-    const PromiseMap = (props.concurrent) ? Promise.map : Promise.mapSeries;
+    const PromiseMap = props.concurrent ? Promise.map : Promise.mapSeries;
     return PromiseMap(requests, (request, i) => {
       if (request.complete) return;
       return oada
@@ -246,7 +252,7 @@ const oadaDelete = [
         "Passing request parameters as top level keys of cerebral props has been deprecated. Instead, pass requests in as an array of request objects under the requests key"
       );
     var requests = props.requests || [];
-    const PromiseMap = (props.concurrent) ? Promise.map : Promise.mapSeries;
+    const PromiseMap = props.concurrent ? Promise.map : Promise.mapSeries;
     return PromiseMap(requests, (request, i) => {
       if (request.complete) return;
       let _cerebralPath = request.path.replace(/^\//, "").split("/").join(".");
@@ -325,7 +331,7 @@ const post = [
         "Passing request parameters as top level keys of cerebral props has been deprecated. Instead, pass requests in as an array of request objects under the requests key"
       );
     var requests = props.requests || [];
-    const PromiseMap = (props.concurrent) ? Promise.map : Promise.mapSeries;
+    const PromiseMap = props.concurrent ? Promise.map : Promise.mapSeries;
     return PromiseMap(requests, (request, i) => {
       if (request.complete) return;
       return oada
@@ -372,5 +378,5 @@ export default {
   resetCache,
   disconnect,
   domainToConnectionId,
-  handleWatch
+  handleWatch,
 };
